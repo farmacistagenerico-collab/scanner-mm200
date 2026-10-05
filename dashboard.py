@@ -34,6 +34,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -871,16 +872,23 @@ async function aggiorna() {{
 </script>
 </body></html>"""
     if URL_WORKFLOW:
-        # nella pagina pubblicata su GitHub Pages il tasto locale non può aggiornare: rimandiamo al workflow
+        # ---- pagina pubblicata su GitHub Pages ----
+        # Qui non c'è un server locale: il tasto ⟳ non può funzionare, quindi lo togliamo
+        # (e con lui l'avviso "server non raggiungibile", che sul sito sarebbe fuorviante).
+        # Al suo posto il link al workflow di aggiornamento.
+        html = re.sub(r'\s*<button id="btn".*?</button>', '', html, count=1, flags=re.S)
         àncora = '<span id="statoServer" style="font-size:12.5px;color:#64748b">verifico il collegamento col server…</span>'
-        if àncora in html:
-            html = html.replace(
-                àncora,
-                f'<a href="{URL_WORKFLOW}" style="display:inline-block;background:#0f172a;color:#fff;'
-                f'border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;text-decoration:none">'
-                f'Aggiorna su GitHub →</a> '
-                '<span style="font-size:12.5px;color:#64748b">apre il workflow di aggiornamento '
-                '(dal telefono funziona con l\'app GitHub)</span>')
+        html = html.replace(
+            àncora,
+            f'<a href="{URL_WORKFLOW}" style="display:inline-block;background:#0f172a;color:#fff;'
+            f'border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;text-decoration:none">'
+            f'Aggiorna su GitHub →</a> '
+            '<span style="font-size:12.5px;color:#64748b">la pagina si aggiorna da sola ogni giorno feriale '
+            '(mattina e sera); tocca il tasto per aggiornarla subito · dal telefono serve l\'app GitHub</span>')
+        # via il controllo del server locale: sul sito non ha senso
+        html = re.sub(r'<script>\s*const BASI.*?</script>',
+                      '<script>/* pagina pubblicata su GitHub: si aggiorna automaticamente */</script>',
+                      html, count=1, flags=re.S)
 
     percorso = os.path.join(OUT_DIR, "dashboard_statico.html")
     with open(percorso, "w", encoding="utf-8") as f:

@@ -1,0 +1,20 @@
+CARICA QUESTI 3 FILE SU GITHUB — una sola volta
+================================================
+
+1) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/upload/main
+2) Trascina nella pagina TUTTI E 3 i file di questa cartella:
+      index.html · dashboard.py · aggiorna.yml
+3) In fondo: "Commit changes" → di nuovo "Commit changes"
+
+Poi, per finire (2 minuti):
+4) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/edit/main/aggiorna.yml
+   In alto nel campo del nome sostituisci "aggiorna.yml" con:
+      .github/workflows/aggiorna.yml
+   Poi "Commit changes" → "Commit changes".
+5) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/actions
+   Clicca "Aggiorna dashboard" → "Run workflow" → "Run workflow".
+   Attendi ~5 minuti (pallino verde = fatto). Poi ricarica il sito:
+      https://farmacistagenerico-collab.github.io/scanner-mm200/
+
+Da quel momento la pagina si aggiorna da sola ogni giorno feriale
+(mattina e sera) senza tenere acceso nessun computer.
