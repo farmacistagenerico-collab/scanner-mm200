@@ -883,8 +883,9 @@ async function aggiorna() {{
             f'<a href="{URL_WORKFLOW}" style="display:inline-block;background:#0f172a;color:#fff;'
             f'border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;text-decoration:none">'
             f'Aggiorna su GitHub →</a> '
-            '<span style="font-size:12.5px;color:#64748b">la pagina si aggiorna da sola ogni giorno feriale '
-            '(mattina e sera); tocca il tasto per aggiornarla subito · dal telefono serve l\'app GitHub</span>')
+            '<span style="font-size:12.5px;color:#64748b">la pagina si aggiorna da sola più volte al giorno '
+            '(a mercato aperto) e prima di ogni apertura; tocca il tasto per aggiornarla subito · '
+            'dal telefono serve l\'app GitHub</span>')
         # via il controllo del server locale: sul sito non ha senso
         html = re.sub(r'<script>\s*const BASI.*?</script>',
                       '<script>/* pagina pubblicata su GitHub: si aggiorna automaticamente */</script>',

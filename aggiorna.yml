@@ -1,0 +1,107 @@
+# =============================================================================
+#  Aggiorna la dashboard di Piazza Affari e la pubblica su GitHub Pages
+# =============================================================================
+#  Come funziona:
+#    GitHub esegue questo file da solo, nei feriali:
+#      - ogni 30 minuti mentre la Borsa è aperta  → prezzo quasi in diretta
+#      - ~08:30 (prima dell'apertura) e ~17:45 (dopo la chiusura) → prezzi ufficiali
+#    Scarica i dati, ricalcola punteggi, classifica e curva della strategia, e
+#    salva index.html aggiornato nel repository. GitHub Pages lo pubblica da solo:
+#    il sito non ha mai bisogno del tuo computer acceso.
+#
+#    Nota sui ritardi: il feed gratuito Yahoo è ritardato di ~15 minuti e GitHub
+#    può ritardare di qualche minuto l'avvio dei job programmati: in pratica il
+#    prezzo che vedi ha 15-45 minuti di ritardo. Per il tick-by-tick serve il
+#    broker (o la dashboard locale, che aggiorna ogni minuto).
+#
+#  Avvio a mano: scheda "Actions" del repository → "Aggiorna dashboard"
+#                → pulsante "Run workflow".
+#
+#  DOVE VA MESSO (l'unica cosa che conta):   .github/workflows/aggiorna.yml
+#  (il percorso deve iniziare con ".github/workflows/", altrimenti GitHub lo ignora)
+# =============================================================================
+name: Aggiorna dashboard
+
+on:
+  schedule:
+    # ATTENZIONE: gli orari sono in UTC (a Milano: +2h d'estate, +1h d'inverno).
+    - cron: "30 6 * * 1-5"          # 08:30 → prima dell'apertura (chiusura di ieri)
+    - cron: "7,37 7-15 * * 1-5"     # ogni 30 min dalle 09:07 alle 17:37 → borsa aperta
+    - cron: "45 15 * * 1-5"         # 17:45 → prezzi di chiusura ufficiali
+  workflow_dispatch:        # avvio manuale (è il tasto "Aggiorna su GitHub" della pagina)
+
+permissions:
+  contents: write           # serve per salvare il nuovo index.html nel repository
+
+concurrency:
+  group: aggiorna-dashboard
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Prepara Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Mese corrente (per la chiave della cache)
+        id: quando
+        run: echo "mese=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Recupera le cache dati (56 MB, vivono qui e non nel repository)
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: dati-${{ steps.quando.outputs.mese }}
+          restore-keys: |
+            dati-
+
+      - name: Bootstrap dati (scarica la storia solo se manca)
+        run: python bootstrap_dati.py
+
+      - name: Calcola la pagina di oggi
+        run: python dashboard.py --una-tantum
+
+      - name: Pagina con i punteggi per titolo (opzionale)
+        continue-on-error: true
+        run: python punteggio.py
+
+      - name: Pubblica nel repository (GitHub Pages la serve da sola)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          cp output/index.html index.html
+          git add index.html
+          if [ -f output/punteggio.html ]; then
+            cp output/punteggio.html punteggio.html
+            git add punteggio.html
+          fi
+          git add output/*.html 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica da salvare: la pagina era già aggiornata."
+          else
+            git commit -m "Aggiorna dashboard ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            if ! git push; then
+              echo "::error::GitHub ha negato il salvataggio. Vai su Settings -> Actions -> General -> Workflow permissions, scegli 'Read and write permissions' e rilancia il job."
+              exit 1
+            fi
+            echo "Pagina aggiornata e pubblicata."
+          fi
+
+      - name: Riepilogo del giorno
+        run: |
+          echo "### Dashboard aggiornata" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          head -c 1200 output/selezione_oggi.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
