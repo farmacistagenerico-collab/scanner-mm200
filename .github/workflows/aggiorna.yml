@@ -23,6 +23,7 @@ on:
     # 15:45 UTC = 17:45 a Milano (estate) / 16:45 (inverno) → dopo la chiusura
     - cron: "30 6 * * 1-5"
     - cron: "45 15 * * 1-5"
+    - cron: "7,37 7-15 * * 1-5"
   workflow_dispatch:        # avvio manuale (è il tasto "Aggiorna su GitHub" della pagina)
 
 permissions:
