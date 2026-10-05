@@ -1,0 +1,311 @@
+{
+  "varianti": [
+    {
+      "CAGR_%": 17.23,
+      "volatilità_%": 23.14,
+      "Sharpe": 0.81,
+      "max_drawdown_%": -36.03,
+      "mesi_positivi_%": 58.3,
+      "equity_finale": 1205789.6,
+      "turnover_mensile_%": 24.9,
+      "titoli_in_portafoglio": 10.0,
+      "variante": "MOM 12-1, top 10"
+    },
+    {
+      "CAGR_%": 17.71,
+      "volatilità_%": 22.32,
+      "Sharpe": 0.85,
+      "max_drawdown_%": -34.17,
+      "mesi_positivi_%": 58.3,
+      "equity_finale": 1293853.24,
+      "turnover_mensile_%": 28.2,
+      "titoli_in_portafoglio": 9.8,
+      "variante": "MOM 12-1, top 10 + filtro MM200"
+    },
+    {
+      "CAGR_%": 15.85,
+      "volatilità_%": 18.94,
+      "Sharpe": 0.88,
+      "max_drawdown_%": -32.29,
+      "mesi_positivi_%": 59.9,
+      "equity_finale": 1001519.16,
+      "turnover_mensile_%": 19.5,
+      "titoli_in_portafoglio": 20.0,
+      "variante": "MOM 12-1, top 20"
+    },
+    {
+      "CAGR_%": 16.0,
+      "volatilità_%": 22.46,
+      "Sharpe": 0.78,
+      "max_drawdown_%": -38.7,
+      "mesi_positivi_%": 59.4,
+      "equity_finale": 1010883.18,
+      "turnover_mensile_%": 35.3,
+      "titoli_in_portafoglio": 10.0,
+      "variante": "MOM 6 mesi, top 10"
+    },
+    {
+      "CAGR_%": 15.44,
+      "volatilità_%": 19.65,
+      "Sharpe": 0.84,
+      "max_drawdown_%": -37.37,
+      "mesi_positivi_%": 57.8,
+      "equity_finale": 948571.28,
+      "turnover_mensile_%": 26.2,
+      "titoli_in_portafoglio": 10.0,
+      "variante": "MOM 12-1 corretto per volatilità, top 10"
+    },
+    {
+      "CAGR_%": -5.39,
+      "volatilità_%": 28.79,
+      "Sharpe": -0.05,
+      "max_drawdown_%": -61.99,
+      "mesi_positivi_%": 50.8,
+      "equity_finale": 39828.97,
+      "turnover_mensile_%": 23.0,
+      "titoli_in_portafoglio": 10.0,
+      "variante": "PEGGIORI 10 (controllo inverso)"
+    },
+    {
+      "CAGR_%": 4.98,
+      "volatilità_%": 19.53,
+      "Sharpe": 0.35,
+      "max_drawdown_%": -40.55,
+      "mesi_positivi_%": 57.2,
+      "equity_finale": 212048.6,
+      "variante": "Portafogli casuali (media di 30 seed)"
+    },
+    {
+      "CAGR_%": 11.68,
+      "volatilità_%": 18.46,
+      "Sharpe": 0.7,
+      "max_drawdown_%": -32.58,
+      "mesi_positivi_%": 61.2,
+      "equity_finale": 642168.81,
+      "variante": "Universo equipesato (buy & hold)"
+    },
+    {
+      "CAGR_%": 5.09,
+      "volatilità_%": 19.81,
+      "Sharpe": 0.35,
+      "max_drawdown_%": -43.65,
+      "mesi_positivi_%": 55.7,
+      "equity_finale": 230558.09,
+      "variante": "FTSE MIB (buy & hold)"
+    }
+  ],
+  "is_oos": [
+    {
+      "CAGR_%": 14.62,
+      "volatilità_%": 20.71,
+      "Sharpe": 0.77,
+      "max_drawdown_%": -30.85,
+      "mesi_positivi_%": 58.0,
+      "equity_finale": 253742.76,
+      "variante": "MOM 12-1, top 10",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 18.53,
+      "volatilità_%": 25.0,
+      "Sharpe": 0.82,
+      "max_drawdown_%": -36.03,
+      "mesi_positivi_%": 58.1,
+      "equity_finale": 1205789.6,
+      "variante": "MOM 12-1, top 10",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 13.78,
+      "volatilità_%": 20.29,
+      "Sharpe": 0.75,
+      "max_drawdown_%": -32.53,
+      "mesi_positivi_%": 55.6,
+      "equity_finale": 242926.7,
+      "variante": "MOM 12-1, top 10 + filtro MM200",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 19.68,
+      "volatilità_%": 23.81,
+      "Sharpe": 0.89,
+      "max_drawdown_%": -34.17,
+      "mesi_positivi_%": 60.0,
+      "equity_finale": 1293853.24,
+      "variante": "MOM 12-1, top 10 + filtro MM200",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 13.75,
+      "volatilità_%": 18.34,
+      "Sharpe": 0.81,
+      "max_drawdown_%": -28.72,
+      "mesi_positivi_%": 59.3,
+      "equity_finale": 240967.01,
+      "variante": "MOM 12-1, top 20",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 16.49,
+      "volatilità_%": 19.43,
+      "Sharpe": 0.9,
+      "max_drawdown_%": -32.29,
+      "mesi_positivi_%": 60.0,
+      "equity_finale": 1001519.16,
+      "variante": "MOM 12-1, top 20",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 11.72,
+      "volatilità_%": 20.27,
+      "Sharpe": 0.66,
+      "max_drawdown_%": -38.7,
+      "mesi_positivi_%": 55.6,
+      "equity_finale": 210609.52,
+      "variante": "MOM 6 mesi, top 10",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 18.54,
+      "volatilità_%": 24.11,
+      "Sharpe": 0.84,
+      "max_drawdown_%": -35.18,
+      "mesi_positivi_%": 61.9,
+      "equity_finale": 1010883.18,
+      "variante": "MOM 6 mesi, top 10",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 12.68,
+      "volatilità_%": 18.65,
+      "Sharpe": 0.74,
+      "max_drawdown_%": -28.12,
+      "mesi_positivi_%": 54.3,
+      "equity_finale": 226322.99,
+      "variante": "MOM 12-1 corretto per volatilità, top 10",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 16.69,
+      "volatilità_%": 20.45,
+      "Sharpe": 0.87,
+      "max_drawdown_%": -37.37,
+      "mesi_positivi_%": 60.0,
+      "equity_finale": 948571.28,
+      "variante": "MOM 12-1 corretto per volatilità, top 10",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": -3.88,
+      "volatilità_%": 29.68,
+      "Sharpe": 0.01,
+      "max_drawdown_%": -58.81,
+      "mesi_positivi_%": 49.4,
+      "equity_finale": 72369.34,
+      "variante": "PEGGIORI 10 (controllo inverso)",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": -6.84,
+      "volatilità_%": 28.34,
+      "Sharpe": -0.11,
+      "max_drawdown_%": -49.43,
+      "mesi_positivi_%": 51.4,
+      "equity_finale": 39828.97,
+      "variante": "PEGGIORI 10 (controllo inverso)",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 5.56,
+      "volatilità_%": 19.63,
+      "Sharpe": 0.38,
+      "max_drawdown_%": -40.55,
+      "mesi_positivi_%": 55.6,
+      "equity_finale": 143301.14,
+      "variante": "Portafogli casuali (media di 30 seed)",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 3.98,
+      "volatilità_%": 19.59,
+      "Sharpe": 0.3,
+      "max_drawdown_%": -37.01,
+      "mesi_positivi_%": 58.1,
+      "equity_finale": 212048.6,
+      "variante": "Portafogli casuali (media di 30 seed)",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": 13.73,
+      "volatilità_%": 18.44,
+      "Sharpe": 0.8,
+      "max_drawdown_%": -32.58,
+      "mesi_positivi_%": 58.9,
+      "equity_finale": 279929.54,
+      "variante": "Universo equipesato (buy & hold)",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 9.34,
+      "volatilità_%": 18.61,
+      "Sharpe": 0.58,
+      "max_drawdown_%": -28.76,
+      "mesi_positivi_%": 62.9,
+      "equity_finale": 642168.81,
+      "variante": "Universo equipesato (buy & hold)",
+      "periodo": "2018-2026"
+    },
+    {
+      "CAGR_%": -0.02,
+      "volatilità_%": 20.55,
+      "Sharpe": 0.1,
+      "max_drawdown_%": -43.65,
+      "mesi_positivi_%": 52.6,
+      "equity_finale": 99803.62,
+      "variante": "FTSE MIB (buy & hold)",
+      "periodo": "2010-2017"
+    },
+    {
+      "CAGR_%": 9.04,
+      "volatilità_%": 19.08,
+      "Sharpe": 0.55,
+      "max_drawdown_%": -28.89,
+      "mesi_positivi_%": 58.1,
+      "equity_finale": 230558.09,
+      "variante": "FTSE MIB (buy & hold)",
+      "periodo": "2018-2026"
+    }
+  ],
+  "random_cagr": [
+    4.78,
+    -0.47,
+    5.79,
+    3.66,
+    3.48,
+    6.41,
+    5.61,
+    4.62,
+    7.07,
+    3.74,
+    1.38,
+    5.09,
+    6.79,
+    9.29,
+    6.55,
+    9.93,
+    2.6,
+    2.95,
+    0.63,
+    3.11,
+    3.44,
+    4.96,
+    4.47,
+    3.59,
+    1.93,
+    6.51,
+    3.72,
+    5.58,
+    8.34,
+    0.96
+  ]
+}

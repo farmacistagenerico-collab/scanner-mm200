@@ -1,0 +1,19 @@
+[Unit]
+Description=Dashboard punteggi Piazza Affari (scanner MM200)
+Documentation=file:///percorso/scanner_mm200/LIVE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# --- ADATTA QUESTI DUE PERCORSI ---
+WorkingDirectory=/percorso/scanner_mm200
+ExecStart=/usr/bin/python3 -u dashboard.py --no-browser --porta 8000
+Restart=always
+RestartSec=15
+# log nel journal:  journalctl --user -u scanner-dashboard -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Avvio automatico su macOS (launchd).
+  1) sostituisci /percorso/scanner_mm200 con il percorso reale;
+  2) copia il file in ~/Library/LaunchAgents/ ;
+  3) attivalo con:  launchctl load -w ~/Library/LaunchAgents/com.piazzaaffari.dashboard.plist
+  4) log: tail -f /percorso/scanner_mm200/output/dashboard.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.piazzaaffari.dashboard</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>-u</string>
+    <string>dashboard.py</string>
+    <string>--no-browser</string>
+    <string>--porta</string>
+    <string>8000</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/percorso/scanner_mm200</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/percorso/scanner_mm200/output/dashboard.log</string>
+  <key>StandardErrorPath</key>
+  <string>/percorso/scanner_mm200/output/dashboard.log</string>
+</dict>
+</plist>

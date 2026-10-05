@@ -1,0 +1,231 @@
+{
+  "giornaliero_sovrapposte": {
+    "n": 4297,
+    "righe": [
+      {
+        "gruppo": "tutte le rotture",
+        "n": 4036,
+        "win": 57.3,
+        "medio": 11.65,
+        "mediana": 6.19,
+        "t": -1.64,
+        "p": 0.101
+      },
+      {
+        "gruppo": "struttura OK",
+        "n": 1118,
+        "win": 58.9,
+        "medio": 13.71,
+        "mediana": 7.22,
+        "t": 0.64,
+        "p": 0.522
+      },
+      {
+        "gruppo": "struttura NO",
+        "n": 2892,
+        "win": 56.6,
+        "medio": 10.8,
+        "mediana": 5.33,
+        "t": -2.43,
+        "p": 0.0151
+      },
+      {
+        "gruppo": "struttura OK + vol ≥1,5x",
+        "n": 321,
+        "win": 58.9,
+        "medio": 14.57,
+        "mediana": 6.37,
+        "t": 0.67,
+        "p": 0.5009
+      },
+      {
+        "gruppo": "struttura OK + vol <1,5x",
+        "n": 797,
+        "win": 58.8,
+        "medio": 13.37,
+        "mediana": 7.26,
+        "t": 0.33,
+        "p": 0.7396
+      }
+    ],
+    "welch_struttura": [
+      1.7873,
+      0.074
+    ],
+    "welch_volume_in_struttura": [
+      0.3882,
+      0.698
+    ]
+  },
+  "giornaliero_non_sovrapposte": {
+    "n": 1290,
+    "righe": [
+      {
+        "gruppo": "tutte le rotture",
+        "n": 1224,
+        "win": 57.7,
+        "medio": 13.87,
+        "mediana": 6.55,
+        "t": 0.77,
+        "p": 0.4403
+      },
+      {
+        "gruppo": "struttura OK",
+        "n": 360,
+        "win": 57.5,
+        "medio": 11.13,
+        "mediana": 5.71,
+        "t": -0.78,
+        "p": 0.4331
+      },
+      {
+        "gruppo": "struttura NO",
+        "n": 840,
+        "win": 57.3,
+        "medio": 14.86,
+        "mediana": 6.65,
+        "t": 1.17,
+        "p": 0.2411
+      },
+      {
+        "gruppo": "struttura OK + vol ≥1,5x",
+        "n": 105,
+        "win": 65.7,
+        "medio": 14.02,
+        "mediana": 11.37,
+        "t": 0.31,
+        "p": 0.7536
+      },
+      {
+        "gruppo": "struttura OK + vol <1,5x",
+        "n": 255,
+        "win": 54.1,
+        "medio": 9.93,
+        "mediana": 4.08,
+        "t": -1.11,
+        "p": 0.2691
+      }
+    ],
+    "welch_struttura": [
+      -1.3486,
+      0.1778
+    ],
+    "welch_volume_in_struttura": [
+      0.8831,
+      0.3782
+    ]
+  },
+  "settimanale": {
+    "n_eventi": 2745,
+    "baseline": 12.96,
+    "righe": [
+      {
+        "gruppo": "tutte le rotture settimanali",
+        "n": 2573,
+        "win": 58.5,
+        "medio": 13.14,
+        "mediana": 7.3,
+        "t": 0.2,
+        "p": 0.8448
+      },
+      {
+        "gruppo": "combo 3 filtri — SOVRAPPOSTA (come prima)",
+        "n": 99,
+        "win": 72.7,
+        "medio": 26.71,
+        "mediana": 18.45,
+        "t": 2.87,
+        "p": 0.0051
+      },
+      {
+        "gruppo": "combo 3 filtri — NON sovrapposta",
+        "n": 90,
+        "win": 74.4,
+        "medio": 26.65,
+        "mediana": 18.7,
+        "t": 2.85,
+        "p": 0.0055
+      },
+      {
+        "gruppo": "combo 4 filtri — SOVRAPPOSTA (come prima)",
+        "n": 54,
+        "win": 72.2,
+        "medio": 35.4,
+        "mediana": 22.36,
+        "t": 3.08,
+        "p": 0.0032
+      },
+      {
+        "gruppo": "combo 4 filtri — NON sovrapposta",
+        "n": 51,
+        "win": 72.5,
+        "medio": 34.58,
+        "mediana": 19.71,
+        "t": 2.85,
+        "p": 0.0064
+      }
+    ]
+  },
+  "stabilita_combo": {
+    "righe": [
+      {
+        "gruppo": "combo 3 filtri | 2005-2014",
+        "n": 39,
+        "win": 87.2,
+        "medio": 32.43,
+        "t": 3.15,
+        "p": 0.0032
+      },
+      {
+        "gruppo": "combo 3 filtri | 2015-2026",
+        "n": 60,
+        "win": 63.3,
+        "medio": 22.99,
+        "t": 1.47,
+        "p": 0.1466
+      },
+      {
+        "gruppo": "combo 4 filtri (tutti) | 2005-2014",
+        "n": 21,
+        "win": 95.2,
+        "medio": 42.29,
+        "t": 3.86,
+        "p": 0.001
+      },
+      {
+        "gruppo": "combo 4 filtri (tutti) | 2015-2026",
+        "n": 33,
+        "win": 57.6,
+        "medio": 31.01,
+        "t": 1.65,
+        "p": 0.1078
+      }
+    ],
+    "top_titoli": [
+      [
+        "SRG.MI",
+        3
+      ],
+      [
+        "BDB.MI",
+        3
+      ],
+      [
+        "MOL.MI",
+        3
+      ],
+      [
+        "SOL.MI",
+        3
+      ],
+      [
+        "BGN.MI",
+        2
+      ],
+      [
+        "REC.MI",
+        2
+      ]
+    ]
+  }
+}

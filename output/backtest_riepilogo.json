@@ -1,0 +1,283 @@
+{
+  "n_operazioni": 4221,
+  "baseline_rendimento_medio_120g": 5.830883871295619,
+  "varianti": [
+    {
+      "variante": "Tutte le rotture (baseline)",
+      "n": 4221,
+      "win_rate": 24.4,
+      "rend_medio": 5.04,
+      "rend_mediano": -3.22,
+      "profit_factor": 2.41,
+      "giorni_medi": 58.0,
+      "t_stat": -1.73,
+      "p_value": 0.083
+    },
+    {
+      "variante": "Volume ≥ 1,5x media",
+      "n": 1614,
+      "win_rate": 24.3,
+      "rend_medio": 5.51,
+      "rend_mediano": -3.73,
+      "profit_factor": 2.31,
+      "giorni_medi": 64.0,
+      "t_stat": -0.39,
+      "p_value": 0.6937
+    },
+    {
+      "variante": "Volume ≥ 2,0x media",
+      "n": 1059,
+      "win_rate": 23.2,
+      "rend_medio": 5.61,
+      "rend_mediano": -3.98,
+      "profit_factor": 2.25,
+      "giorni_medi": 65.0,
+      "t_stat": -0.21,
+      "p_value": 0.8375
+    },
+    {
+      "variante": "Volume < 1,5x (debole)",
+      "n": 2607,
+      "win_rate": 24.5,
+      "rend_medio": 4.75,
+      "rend_mediano": -3.0,
+      "profit_factor": 2.5,
+      "giorni_medi": 55.0,
+      "t_stat": -2.0,
+      "p_value": 0.0453
+    },
+    {
+      "variante": "Conferma settimanale",
+      "n": 1730,
+      "win_rate": 24.5,
+      "rend_medio": 5.01,
+      "rend_mediano": -3.27,
+      "profit_factor": 2.43,
+      "giorni_medi": 59.0,
+      "t_stat": -1.16,
+      "p_value": 0.2459
+    },
+    {
+      "variante": "MM200 non in discesa",
+      "n": 2882,
+      "win_rate": 23.2,
+      "rend_medio": 4.06,
+      "rend_mediano": -3.0,
+      "profit_factor": 2.27,
+      "giorni_medi": 53.0,
+      "t_stat": -3.5,
+      "p_value": 0.0005
+    },
+    {
+      "variante": "MM50 già sopra MM200",
+      "n": 1703,
+      "win_rate": 25.2,
+      "rend_medio": 4.69,
+      "rend_mediano": -2.92,
+      "profit_factor": 2.47,
+      "giorni_medi": 52.0,
+      "t_stat": -1.6,
+      "p_value": 0.1102
+    },
+    {
+      "variante": "RSI 45-75 all'incrocio",
+      "n": 3771,
+      "win_rate": 24.5,
+      "rend_medio": 5.04,
+      "rend_mediano": -3.18,
+      "profit_factor": 2.47,
+      "giorni_medi": 59.0,
+      "t_stat": -1.72,
+      "p_value": 0.0853
+    },
+    {
+      "variante": "Volume ≥1,5x + settimanale",
+      "n": 560,
+      "win_rate": 25.5,
+      "rend_medio": 5.39,
+      "rend_mediano": -3.78,
+      "profit_factor": 2.33,
+      "giorni_medi": 64.0,
+      "t_stat": -0.33,
+      "p_value": 0.7383
+    },
+    {
+      "variante": "Volume ≥1,5x + MM200 ok",
+      "n": 1005,
+      "win_rate": 22.8,
+      "rend_medio": 4.21,
+      "rend_mediano": -3.42,
+      "profit_factor": 2.14,
+      "giorni_medi": 57.0,
+      "t_stat": -1.78,
+      "p_value": 0.0748
+    },
+    {
+      "variante": "Combinato (vol+sett+slope)",
+      "n": 353,
+      "win_rate": 23.2,
+      "rend_medio": 4.74,
+      "rend_mediano": -3.43,
+      "profit_factor": 2.34,
+      "giorni_medi": 56.0,
+      "t_stat": -0.66,
+      "p_value": 0.5069
+    }
+  ],
+  "per_anno": [
+    {
+      "anno": 2005,
+      "n_rotture": 22,
+      "rend_medio": 12.400866223815786,
+      "rend_mediano": 0.24059092090117917,
+      "win_rate": 50.0
+    },
+    {
+      "anno": 2006,
+      "n_rotture": 118,
+      "rend_medio": 9.807903429132157,
+      "rend_mediano": -1.8795790458776773,
+      "win_rate": 40.7
+    },
+    {
+      "anno": 2007,
+      "n_rotture": 113,
+      "rend_medio": -3.2306469887405584,
+      "rend_mediano": -3.2258036603400986,
+      "win_rate": 10.6
+    },
+    {
+      "anno": 2008,
+      "n_rotture": 98,
+      "rend_medio": -4.295518888891823,
+      "rend_mediano": -4.945353107017358,
+      "win_rate": 4.1
+    },
+    {
+      "anno": 2009,
+      "n_rotture": 179,
+      "rend_medio": 5.976162849013645,
+      "rend_mediano": -3.8366162898331835,
+      "win_rate": 33.5
+    },
+    {
+      "anno": 2010,
+      "n_rotture": 203,
+      "rend_medio": 0.39390781287521126,
+      "rend_mediano": -3.3417165870704424,
+      "win_rate": 17.2
+    },
+    {
+      "anno": 2011,
+      "n_rotture": 138,
+      "rend_medio": -2.5633950627548705,
+      "rend_mediano": -3.7556608662740465,
+      "win_rate": 11.6
+    },
+    {
+      "anno": 2012,
+      "n_rotture": 214,
+      "rend_medio": 5.853287933313646,
+      "rend_mediano": -3.7678796573287765,
+      "win_rate": 22.4
+    },
+    {
+      "anno": 2013,
+      "n_rotture": 147,
+      "rend_medio": 20.0790951669208,
+      "rend_mediano": -1.4768009446279984,
+      "win_rate": 41.5
+    },
+    {
+      "anno": 2014,
+      "n_rotture": 145,
+      "rend_medio": 5.250295582789775,
+      "rend_mediano": -3.348412453339178,
+      "win_rate": 20.0
+    },
+    {
+      "anno": 2015,
+      "n_rotture": 210,
+      "rend_medio": 1.8563970702618542,
+      "rend_mediano": -2.863337929705956,
+      "win_rate": 26.7
+    },
+    {
+      "anno": 2016,
+      "n_rotture": 283,
+      "rend_medio": 11.899428643647264,
+      "rend_mediano": -3.2378604040671166,
+      "win_rate": 28.6
+    },
+    {
+      "anno": 2017,
+      "n_rotture": 97,
+      "rend_medio": 7.220368359324088,
+      "rend_mediano": -3.3103341819270216,
+      "win_rate": 29.9
+    },
+    {
+      "anno": 2018,
+      "n_rotture": 263,
+      "rend_medio": -1.0903298936848078,
+      "rend_mediano": -3.38753644352614,
+      "win_rate": 10.3
+    },
+    {
+      "anno": 2019,
+      "n_rotture": 282,
+      "rend_medio": 0.524315945769157,
+      "rend_mediano": -3.6324580563963593,
+      "win_rate": 22.7
+    },
+    {
+      "anno": 2020,
+      "n_rotture": 274,
+      "rend_medio": 17.257639515534716,
+      "rend_mediano": -2.913926443930037,
+      "win_rate": 36.9
+    },
+    {
+      "anno": 2021,
+      "n_rotture": 151,
+      "rend_medio": 3.0816806992698127,
+      "rend_mediano": -2.6779363777566623,
+      "win_rate": 30.5
+    },
+    {
+      "anno": 2022,
+      "n_rotture": 345,
+      "rend_medio": 0.8230392582221915,
+      "rend_mediano": -3.777781461976326,
+      "win_rate": 15.4
+    },
+    {
+      "anno": 2023,
+      "n_rotture": 270,
+      "rend_medio": 4.894992451368708,
+      "rend_mediano": -2.9493323919999925,
+      "win_rate": 28.5
+    },
+    {
+      "anno": 2024,
+      "n_rotture": 201,
+      "rend_medio": 4.99031438247531,
+      "rend_mediano": -3.4123258460750705,
+      "win_rate": 19.9
+    },
+    {
+      "anno": 2025,
+      "n_rotture": 248,
+      "rend_medio": 10.05949101286441,
+      "rend_mediano": -2.994585707474784,
+      "win_rate": 31.0
+    },
+    {
+      "anno": 2026,
+      "n_rotture": 220,
+      "rend_medio": 1.1219695214188243,
+      "rend_mediano": -3.1666676203409794,
+      "win_rate": 25.9
+    }
+  ]
+}

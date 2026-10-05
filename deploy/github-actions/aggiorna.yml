@@ -1,0 +1,114 @@
+# =============================================================================
+#  Aggiorna la dashboard di Piazza Affari e la pubblica su GitHub Pages
+# =============================================================================
+#  - gira da sola due volte al giorno nei feriali (mattina pre-apertura e
+#    dopo la chiusura di Milano) + su richiesta manuale (tasto "Aggiorna su GitHub"
+#    nella pagina pubblicata);
+#  - scarica i dati da Yahoo, ricalcola punteggi/classifica/equity e scrive
+#    output/index.html;
+#  - pubblica il risultato come sito statico: https://<utente>.github.io/<repo>/
+#
+#  Dove va messo:  .github/workflows/aggiorna.yml
+#  Se il progetto sta in una sottocartella, vedi la nota in fondo al file.
+# =============================================================================
+name: Aggiorna dashboard
+
+on:
+  schedule:
+    # ATTENZIONE: gli orari sono in UTC.
+    # 06:30 UTC = 08:30 a Milano (estate) / 07:30 (inverno) → lettura pre-apertura
+    # 15:45 UTC = 17:45 a Milano (estate) / 16:45 (inverno) → dopo la chiusura
+    - cron: "30 6 * * 1-5"
+    - cron: "45 15 * * 1-5"
+  workflow_dispatch:        # avvio manuale (è il tasto "Aggiorna su GitHub")
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Prepara Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Data di oggi (per la chiave della cache)
+        id: data
+        run: echo "giorno=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # le cache dati pesano ~56 MB: stanno in GitHub Actions, non nel repository
+      - name: Recupera le cache dati
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: dati-${{ steps.data.outputs.giorno }}
+          restore-keys: |
+            dati-
+
+      - name: Bootstrap dati (solo se mancano)
+        run: python bootstrap_dati.py
+
+      - name: Calcola e scrivi la pagina
+        run: python dashboard.py --una-tantum
+
+      - name: Pagina con i punteggi per titolo (opzionale)
+        continue-on-error: true
+        run: python punteggio.py
+
+      - name: Prepara il sito
+        run: |
+          mkdir -p _site
+          cp output/index.html _site/index.html
+          [ -f output/punteggio.html ] && cp output/punteggio.html _site/punteggio.html
+          [ -f output/selezione_oggi.md ] && cp output/selezione_oggi.md _site/
+          echo "Sito pronto:"; ls -la _site
+
+      - name: Configura GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Carica il sito
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Pubblica
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Riepilogo
+        run: |
+          echo "### Dashboard aggiornata ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pubblicata su ${{ steps.deploy.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          head -c 1200 output/selezione_oggi.md >> "$GITHUB_STEP_SUMMARY" || true
+
+# -----------------------------------------------------------------------------
+# NOTA — se NON metti il progetto nella radice del repository:
+# aggiungi a questo job
+#
+#     defaults:
+#       run:
+#         working-directory: scanner_mm200
+#
+# e sostituisci i percorsi dei file generati nell'ultimo step:
+#     cp scanner_mm200/output/index.html _site/index.html
+#     path: _site      (resta uguale, ma crea _site dentro la sottocartella)
+# -----------------------------------------------------------------------------
