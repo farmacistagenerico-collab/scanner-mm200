@@ -1,20 +1,34 @@
-CARICA QUESTI 3 FILE SU GITHUB — una sola volta
-================================================
+GERMANIA + FRANCIA — DUE SOLI PASSAGGI, SENZA RINOMINARE NULLA
+================================================================
 
-1) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/upload/main
-2) Trascina nella pagina TUTTI E 3 i file di questa cartella:
-      index.html · dashboard.py · aggiorna.yml
-3) In fondo: "Commit changes" → di nuovo "Commit changes"
+OPERAZIONE 1 — carica i file del sito e del codice
+  1. apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/upload/main
+  2. trascina nella pagina TUTTI I FILE di questa cartella TRANNE aggiorna.yml
+     (sono: i 7 file .py e le 3 pagine index.html, de.html, fr.html)
+  3. in fondo: "Commit changes" -> "Commit changes"
 
-Poi, per finire (2 minuti):
-4) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/edit/main/aggiorna.yml
-   In alto nel campo del nome sostituisci "aggiorna.yml" con:
-      .github/workflows/aggiorna.yml
-   Poi "Commit changes" → "Commit changes".
-5) Apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/actions
-   Clicca "Aggiorna dashboard" → "Run workflow" → "Run workflow".
-   Attendi ~5 minuti (pallino verde = fatto). Poi ricarica il sito:
-      https://farmacistagenerico-collab.github.io/scanner-mm200/
+     Nota: index.html, de.html e fr.html aggiornano subito il sito. Le pagine
+     Germania e Francia saranno raggiungibili dai tasti in alto (Mercato).
 
-Da quel momento la pagina si aggiorna da sola ogni giorno feriale
-(mattina e sera) senza tenere acceso nessun computer.
+OPERAZIONE 2 — metti il workflow nuovo (quello dei 3 mercati)
+  1. apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/upload/main/.github/workflows
+     (questo link carica direttamente DENTRO la cartella giusta: nessuna rinomina!)
+  2. trascina nella pagina il file:  aggiorna.yml
+  3. in fondo: "Commit changes" -> "Commit changes"
+     GitHub sostituisce il workflow precedente con questo.
+
+PROVA FINALE
+  1. apri:  https://github.com/farmacistagenerico-collab/scanner-mm200/actions
+  2. clicca "Aggiorna dashboard" -> "Run workflow" -> "Run workflow"
+  3. attendi ~10 minuti (il primo giro costruisce la storia di Germania e
+     Francia: ~30 MB ciascuna, poi resta in cache e i giri successivi sono veloci)
+  4. apri il sito e usa i tasti in alto:  Italia · Germania · Francia
+
+COSA VEDRAI
+  - pagina Italia  (index.html): come prima, con in più i tasti dei mercati
+  - pagina Germania (de.html): 10 titoli tedeschi scelti con la stessa regola
+  - pagina Francia  (fr.html): 10 titoli francesi, CON UN AVVISO in giallo:
+    in Francia la regola non ha battuto il semplice possesso di tutti i titoli
+    liquidi (10,8% contro 11,1% annuo): guardala come monitor, non operarci.
+
+Se qualcosa non torna, scrivi all'assistente: controlla lui il job e le pagine.

@@ -81,6 +81,56 @@ CFG = carica_config()
 STATO_FILE = os.path.join(BASE_DIR, "output", "stato_live.json")
 
 # se giriamo dentro GitHub Actions, la pagina statica può rimandare al workflow per l'aggiornamento
+# ---------------------------------------------------------------------------
+#  Multi-mercato: pagine, etichette e affidabilità misurata
+# ---------------------------------------------------------------------------
+PAGINE_MERCATO = {"IT": "index.html", "DE": "de.html", "FR": "fr.html"}
+
+AFFIDABILITA = {
+    # numeri dal backtest 2010-2026 (momentum_risk.py --mercato XX)
+    "IT": ("ok", "Selezione 12-1 + MM200 + buffer 5: +18,7% annuo contro +12,8% "
+                 "dell'insieme dei titoli liquidi e +6,3% dei titoli estratti a caso. Metodo validato."),
+    "DE": ("ok", "Selezione 12-1 + MM200: +17,0% annuo contro +13,4% dell'insieme dei titoli liquidi "
+                 "e +6,2% dei titoli estratti a caso (primo periodo +17,1%, secondo +16,6%: stabile). Metodo validato."),
+    "FR": ("attenzione", "In Francia la selezione NON ha battuto l'insieme dei titoli liquidi: "
+                         "+10,8% contro +11,1% annuo dal 2010, e nel secondo periodo +6,0% contro +6,2%. "
+                         "Usa questa pagina come monitor, non come strategia operativa."),
+}
+
+
+def _etichetta_mercato():
+    m = tu.info()
+    return f"{m['nome']} ({m['paese']})"
+
+
+def _tabs_html():
+    cod = tu.mercato
+    pezzi = []
+    for c in tu.elenco_mercati():
+        m = tu.MERCATI[c]
+        attivo = c == cod
+        stile = ("background:#0f172a;color:#fff;font-weight:800"
+                 if attivo else "background:#e2e8f0;color:#334155;font-weight:600")
+        pezzi.append(f'<a href="{PAGINE_MERCATO[c]}" style="text-decoration:none;border-radius:9px;'
+                     f'padding:8px 14px;font-size:13.5px;{stile}">{m["paese"]}</a>')
+    return ('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px">'
+            '<span style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#64748b;'
+            'font-weight:700;margin-right:4px">Mercato</span>' + "".join(pezzi) + '</div>')
+
+
+def _nota_affidabilita_html():
+    stato, testo = AFFIDABILITA.get(tu.mercato, ("ok", ""))
+    if stato == "ok":
+        bordo, sfondo, icona = "#bbf7d0", "#f0fdf4", "✅"
+        colore_titolo = "#166534"
+    else:
+        bordo, sfondo, icona = "#fde68a", "#fffbeb", "⚠️"
+        colore_titolo = "#92400e"
+    return (f'<div style="background:{sfondo};border:1px solid {bordo};border-radius:12px;padding:13px 16px;'
+            f'margin-top:12px;font-size:13px;color:#334155;line-height:1.65">'
+            f'<b style="color:{colore_titolo}">{icona} Affidabilità del metodo su questo mercato</b><br>{testo}</div>')
+
+
 REPO_CI = os.environ.get("GITHUB_REPOSITORY", "")
 URL_WORKFLOW = (f"https://github.com/{REPO_CI}/actions/workflows/aggiorna.yml"
                 if REPO_CI else "")
@@ -552,7 +602,7 @@ def _equity_html() -> str:
 
 
 def leggi_portafoglio() -> list[str]:
-    att = os.path.join(OUT_DIR, "portafoglio_attuale.csv")
+    att = os.path.join(OUT_DIR, tu.percorso("portafoglio_attuale.csv"))
     if not os.path.exists(att):
         return []
     try:
@@ -765,9 +815,15 @@ def scrivi_snapshot():
         f'<span style="color:#b45309">(+{n(a["manca_%"], 1)}%)</span></span>' for a in attesa) or "nessun candidato"
 
     mib = "sopra" if contesto.get("mib_sopra_mm200") else "sotto"
+    # --- etichette e schede del mercato corrente ---
+    _m = tu.info()
+    titolo_mercato = f"{_m['nome']} ({_m['paese']})"
+    _index = "l'indice FTSE MIB" if tu.mercato == "IT" else f"l'indice {_m['benchmark_nome']}"
+    sottotitolo = f"{_m['nome']} · {_m['paese']} · {_index} · vista statica (aggiornata {quando.replace('T', ' ')})"
+    tabs_html, nota_html = _tabs_html(), _nota_affidabilita_html()
     html = f"""<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Punteggi live (vista statica) — Piazza Affari</title>
+<title>Punteggi live (vista statica) — {titolo_mercato}</title>
 <style>
   body {{ margin:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a }}
   .contenitore {{ max-width:860px;margin:0 auto;padding:16px 12px 36px }}
@@ -777,12 +833,14 @@ def scrivi_snapshot():
   .box {{ background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(15,23,42,.08) }}
 </style></head>
 <body><div class="contenitore">
+  {tabs_html}
   <div style="background:#0f172a;color:#fff;border-radius:14px;padding:20px">
     <div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#94a3b8">
-      Piazza Affari · vista statica (aggiornata {quando.replace('T', ' ')})</div>
+      {sottotitolo}</div>
     <div style="font-size:25px;font-weight:900;margin:8px 0 4px">{verdetto}</div>
     <div style="color:#cbd5e1;font-size:13.5px">prossima verifica {prossima} · fra {sedute} sedute · {fonte}</div>
   </div>
+  {nota_html}
   <div class="box" style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <button id="btn" onclick="aggiorna()"
       style="background:#0a7d3c;color:#fff;border:0;border-radius:10px;padding:12px 18px;
@@ -891,13 +949,15 @@ async function aggiorna() {{
                       '<script>/* pagina pubblicata su GitHub: si aggiorna automaticamente */</script>',
                       html, count=1, flags=re.S)
 
-    percorso = os.path.join(OUT_DIR, "dashboard_statico.html")
+    cod = tu.mercato
+    nome_statico = "dashboard_statico.html" if cod == "IT" else f"dashboard_statico_{cod.lower()}.html"
+    percorso = os.path.join(OUT_DIR, nome_statico)
     with open(percorso, "w", encoding="utf-8") as f:
         f.write(html)
 
-    # copia pronta per GitHub Pages (index.html)
+    # copia pronta per GitHub Pages (index.html / de.html / fr.html)
     try:
-        with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as f:
+        with open(os.path.join(OUT_DIR, PAGINE_MERCATO[cod]), "w", encoding="utf-8") as f:
             f.write(html)
     except Exception as e:
         print(f"[pages] {e}")
@@ -1302,6 +1362,49 @@ def avvio(porta: int, apri_browser: bool):
         srv.server_close()
 
 
+def main_con_mercato(codice: str, args) -> int:
+    """Esegue la dashboard per il mercato indicato, con gli argomenti già letti.
+
+    Imposta il mercato (liste titoli, benchmark, percorsi di cache e output) e
+    poi fa quello che serve: un giro e scrittura della pagina (--una-tantum)
+    oppure il server vero e proprio."""
+    tu.imposta_mercato(codice)
+    print(f"[mercato] {tu.info()['paese']} ({tu.info()['nome']}) · {len(tu.solo_ticker())} titoli · "
+          f"benchmark {tu.BENCHMARK_NOME}")
+    return _esegui(args)
+
+
+def _esegui(args) -> int:
+    if args.ogni_minuti is not None:
+        CFG["ogni_minuti"] = args.ogni_minuti
+    if args.digest_ora is not None:
+        CFG["digest_ora"] = args.digest_ora
+    if args.utente or args.password:
+        CFG["auth"] = {"utente": args.utente or "dashboard", "password": args.password or ""}
+    if args.notifica_prova:
+        invia_notifica("Prova di notifica dalla dashboard.")
+        return 0
+
+    if args.una_tantum:
+        print("Modalità una-tantum (CI): calcolo e scrittura della pagina…")
+        S["oss"] = _carica_storico()
+        _aggiorna_modello()
+        if S["oss"] is None:
+            print("[avviso] casi storici assenti: i punteggi non saranno disponibili "
+                  "(lancia prima bootstrap_dati.py --mercato " + tu.mercato + ")")
+        aggiorna_tutto(messaggio="aggiornamento CI")
+        with LOCK:
+            if S["righe"] is None or len(S["righe"]) == 0:
+                print("[errore] nessun dato calcolato")
+                return 1
+            print(f"Fatto: {len(S['righe'])} titoli · verdetto: {S['verdetto']} · "
+                  f"prossima verifica: {S['prossima']} · errore: {S['errore'] or 'nessuno'}")
+            print(f"pagina: output/{PAGINE_MERCATO[tu.mercato]}")
+        return 0
+    avvio(args.porta, not args.no_browser)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Dashboard live con punteggi aggiornabili")
     ap.add_argument("--porta", type=int, default=8000)
@@ -1314,37 +1417,27 @@ def main() -> int:
     ap.add_argument("--notifica-prova", action="store_true", help="manda una notifica di prova ed esce")
     ap.add_argument("--una-tantum", action="store_true",
                     help="un solo aggiornamento completo, scrive la pagina ed esce (CI/cron)")
+    ap.add_argument("--mercato", default="IT", help="IT, DE, FR oppure TUTTI (default IT)")
     args = ap.parse_args()
 
-    if args.ogni_minuti is not None:
-        CFG["ogni_minuti"] = args.ogni_minuti
-    if args.digest_ora is not None:
-        CFG["digest_ora"] = args.digest_ora
-    if args.utente or args.password:
-        CFG["auth"] = {"utente": args.utente or "dashboard", "password": args.password or ""}
-    if args.notifica_prova:
-        invia_notifica("Prova di notifica dalla dashboard di Piazza Affari.")
+    if args.mercato.upper() in ("TUTTI", "ALL", "*"):
+        # tutti i mercati in sequenza: un giro per ciascuno, poi esce
+        for cod in tu.elenco_mercati():
+            print(f"\n===== {cod} · {tu.MERCATI[cod]['paese']} =====")
+            esito = main_con_mercato(cod, args)
+            if esito:
+                print(f"[{cod}] qualcosa non ha funzionato (codice {esito})")
         return 0
+    return main_con_mercato(args.mercato, args)
 
-    if args.una_tantum:
-        # GitHub Actions / cron: un solo giro completo, scrive la pagina ed esce
-        print("Modalità una-tantum (CI): calcolo e scrittura della pagina…")
-        S["oss"] = _carica_storico()
-        _aggiorna_modello()
-        if S["oss"] is None:
-            print("[avviso] casi storici assenti: i punteggi non saranno disponibili "
-                  "(lancia prima bootstrap_dati.py)")
-        aggiorna_tutto(messaggio="aggiornamento CI")
-        with LOCK:
-            if S["righe"] is None or len(S["righe"]) == 0:
-                print("[errore] nessun dato calcolato")
-                return 1
-            print(f"Fatto: {len(S['righe'])} titoli · verdetto: {S['verdetto']} · "
-                  f"prossima verifica: {S['prossima']} · errore: {S['errore'] or 'nessuno'}")
-        return 0
-    avvio(args.porta, not args.no_browser)
-    return 0
 
+@tu.osserva
+def _percorsi_segui_mercato(cod=None):
+    """A ogni cambio di mercato, la dashboard punta a cache e file di quel mercato."""
+    global CACHE_LIVE, CACHE_STORICO, STATO_FILE
+    CACHE_LIVE = os.path.join(BASE_DIR, "cache", tu.percorso("scanner_live.pkl"))
+    CACHE_STORICO = os.path.join(BASE_DIR, "cache", tu.percorso("momentum_raw.pkl"))
+    STATO_FILE = os.path.join(BASE_DIR, "output", tu.percorso("stato_live.json"))
 
 if __name__ == "__main__":
     sys.exit(main())

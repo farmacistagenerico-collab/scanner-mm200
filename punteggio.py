@@ -54,6 +54,14 @@ OUT_DIR = os.path.join(BASE_DIR, "output")
 CACHE_LIVE = os.path.join(BASE_DIR, "cache", "scanner_live.pkl")
 CACHE_STORICO = os.path.join(BASE_DIR, "cache", "momentum_raw.pkl")
 
+
+@tu.osserva
+def _percorsi_segui_mercato(cod=None):
+    """Cache distinte per mercato."""
+    global CACHE_LIVE, CACHE_STORICO
+    CACHE_LIVE = os.path.join(BASE_DIR, "cache", tu.percorso("scanner_live.pkl"))
+    CACHE_STORICO = os.path.join(BASE_DIR, "cache", tu.percorso("momentum_raw.pkl"))
+
 LIQ = 2_000_000.0
 N_TITOLI = 10
 ORIZZONTE = 12          # mesi
@@ -375,8 +383,13 @@ def scrivi_html(path, data_dati, verdetto, righe: pd.DataFrame, val: pd.DataFram
 def main() -> int:
     ap = argparse.ArgumentParser(description="Punteggio statistico di affidabilità per titolo")
     ap.add_argument("--dettaglio", action="store_true", help="mostra coefficienti e tabelle interne")
-    ap.add_argument("--out", default=os.path.join(OUT_DIR, "punteggio.html"))
+    ap.add_argument("--out", default=None, help="default: output/punteggio.html (IT) o punteggio_XX.html")
+    ap.add_argument("--mercato", default="IT", help="IT, DE, FR (default IT)")
     args = ap.parse_args()
+    tu.imposta_mercato(args.mercato)
+    if not args.out:
+        nome = "punteggio.html" if tu.mercato == "IT" else f"punteggio_{tu.mercato.lower()}.html"
+        args.out = os.path.join(OUT_DIR, nome)
 
     for f in (CACHE_STORICO, CACHE_LIVE):
         if not os.path.exists(f):
@@ -399,7 +412,7 @@ def main() -> int:
     tab_live = so.costruisci_tabella(pd.read_pickle(CACHE_LIVE), pd.Timestamp(datetime.now().date()))
     tab_live["livello_mm200"] = tab_live["prezzo"] / (1 + tab_live["dist_mm200_%"] / 100)
     tab_live["margin_%"] = tab_live["dist_mm200_%"]
-    att = os.path.join(OUT_DIR, "portafoglio_attuale.csv")
+    att = os.path.join(OUT_DIR, tu.percorso("portafoglio_attuale.csv"))
     tenuti: list[str] = []
     if os.path.exists(att):
         p = pd.read_csv(att, sep=None, engine="python")
@@ -441,7 +454,7 @@ def main() -> int:
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(html)
-    righe.to_csv(os.path.join(OUT_DIR, "punteggio_oggi.csv"), sep=";", decimal=",",
+    righe.to_csv(os.path.join(OUT_DIR, tu.percorso("punteggio_oggi.csv")), sep=";", decimal=",",
                  encoding="utf-8-sig")
 
     X = oss[FEATURES].values.astype(float)

@@ -53,6 +53,12 @@ OUT_DIR = os.path.join(BASE_DIR, "output")
 CACHE = os.path.join(BASE_DIR, "cache", "momentum_raw.pkl")
 
 
+@tu.osserva
+def _cache_segui_mercato(cod=None):
+    global CACHE
+    CACHE = os.path.join(BASE_DIR, "cache", tu.percorso("momentum_raw.pkl"))
+
+
 # ---------------------------------------------------------------------------
 # dati (con cache per non riscaricare a ogni prova)
 # ---------------------------------------------------------------------------
@@ -295,7 +301,9 @@ def main():
                     help="turnover mediano minimo €/giorno (default più severo del modulo base)")
     ap.add_argument("--costo", type=float, default=0.002)
     ap.add_argument("--aggiorna-dati", action="store_true")
+    ap.add_argument("--mercato", default="IT", help="IT, DE, FR (default IT)")
     args = ap.parse_args()
+    tu.imposta_mercato(args.mercato)
 
     class Cfg:
         pass
@@ -459,22 +467,22 @@ def main():
     # ---------------- salvataggi + report ----------------
     os.makedirs(OUT_DIR, exist_ok=True)
     tab.sort_values("Sharpe", ascending=False).to_csv(
-        os.path.join(OUT_DIR, "momentum_risk_varianti.csv"), sep=";", decimal=",",
+        os.path.join(OUT_DIR, tu.percorso("momentum_risk_varianti.csv")), sep=";", decimal=",",
         encoding="utf-8-sig", index=False)
-    tab_cr.to_csv(os.path.join(OUT_DIR, "momentum_risk_crash.csv"), sep=";", decimal=",",
+    tab_cr.to_csv(os.path.join(OUT_DIR, tu.percorso("momentum_risk_crash.csv")), sep=";", decimal=",",
                   encoding="utf-8-sig", index=False)
-    tab_anno.round(2).to_csv(os.path.join(OUT_DIR, "momentum_risk_per_anno.csv"), sep=";",
+    tab_anno.round(2).to_csv(os.path.join(OUT_DIR, tu.percorso("momentum_risk_per_anno.csv")), sep=";",
                              decimal=",", encoding="utf-8-sig")
-    pivo_c.to_csv(os.path.join(OUT_DIR, "momentum_risk_is_oos.csv"), sep=";", decimal=",",
+    pivo_c.to_csv(os.path.join(OUT_DIR, tu.percorso("momentum_risk_is_oos.csv")), sep=";", decimal=",",
                   encoding="utf-8-sig")
-    pd.DataFrame(curve).to_csv(os.path.join(OUT_DIR, "momentum_risk_equity.csv"), sep=";",
+    pd.DataFrame(curve).to_csv(os.path.join(OUT_DIR, tu.percorso("momentum_risk_equity.csv")), sep=";",
                                decimal=",", encoding="utf-8-sig")
 
     from momentum_risk_report import scrivi_report_risk
     path = scrivi_report_risk(tab, colonne, tab_anno, tab_cr, pivo_c, pivo_s, pivo_d,
                              curve, args, rand_cagr, OUT_DIR)
     print(f"\nReport: {path}")
-    with open(os.path.join(OUT_DIR, "momentum_risk_riepilogo.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, tu.percorso("momentum_risk_riepilogo.json")), "w", encoding="utf-8") as f:
         json.dump({"varianti": risultati, "crash": {k: v for k, v in crash.items()},
                    "random_cagr": rand_cagr}, f, ensure_ascii=False, indent=2, default=str)
     return 0

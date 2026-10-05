@@ -58,6 +58,13 @@ CACHE_DIR = os.path.join(BASE_DIR, "cache")
 CACHE_LIVE = os.path.join(CACHE_DIR, "scanner_live.pkl")
 
 
+@tu.osserva
+def _percorsi_segui_mercato(cod=None):
+    """Cache e file di lavoro distinti per mercato (IT mantiene i nomi storici)."""
+    global CACHE_LIVE
+    CACHE_LIVE = os.path.join(CACHE_DIR, tu.percorso("scanner_live.pkl"))
+
+
 # ---------------------------------------------------------------------------
 # dati
 # ---------------------------------------------------------------------------
@@ -192,7 +199,9 @@ def main() -> int:
     ap.add_argument("--periodo", default="3y", help="storico da scaricare (default 3y)")
     ap.add_argument("--no-download", action="store_true", help="usa solo la cache locale")
     ap.add_argument("--solo-lista", action="store_true", help="stampa solo i nomi selezionati")
+    ap.add_argument("--mercato", default="IT", help="IT, DE, FR (default IT)")
     args = ap.parse_args()
+    tu.imposta_mercato(args.mercato)
 
     oggi = pd.Timestamp(datetime.now().date())
     raw = scarica(args.periodo, usa_cache=args.no_download)
@@ -294,7 +303,7 @@ def main() -> int:
     att = out[["ticker", "nome", "rank", "peso_%", "quote", "prezzo"]].copy()
     att.insert(0, "data_selezione", stamp)
     att["prossima_verifica"] = "fine mese" if not args.trimestrale else "fine trimestre"
-    path_att = os.path.join(OUT_DIR, "portafoglio_attuale.csv")
+    path_att = os.path.join(OUT_DIR, tu.percorso("portafoglio_attuale.csv"))
     att.to_csv(path_att, sep=";", decimal=",", encoding="utf-8-sig", index=False)
 
     # scheda markdown

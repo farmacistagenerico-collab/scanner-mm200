@@ -36,6 +36,13 @@ import selezione_oggi as so         # noqa: E402
 CACHE_DIR = os.path.join(BASE_DIR, "cache")
 CACHE_STORICO = os.path.join(CACHE_DIR, "momentum_raw.pkl")
 CACHE_LIVE = os.path.join(CACHE_DIR, "scanner_live.pkl")
+
+
+@tu.osserva
+def _percorsi_segui_mercato(cod=None):
+    global CACHE_STORICO, CACHE_LIVE
+    CACHE_STORICO = os.path.join(CACHE_DIR, tu.percorso("momentum_raw.pkl"))
+    CACHE_LIVE = os.path.join(CACHE_DIR, tu.percorso("scanner_live.pkl"))
 OUT_DIR = os.path.join(BASE_DIR, "output")
 
 
@@ -81,14 +88,15 @@ def cache_live(forza: bool = False) -> bool:
 
 def portafoglio_iniziale() -> bool:
     """Crea output/portafoglio_attuale.csv se non esiste (prima selezione)."""
-    percorso = os.path.join(OUT_DIR, "portafoglio_attuale.csv")
+    percorso = os.path.join(OUT_DIR, tu.percorso("portafoglio_attuale.csv"))
     if os.path.exists(percorso):
         print("[portafoglio] già presente: salto")
         return True
     try:
         import subprocess
         print("[portafoglio] creo la prima selezione…")
-        esito = subprocess.run([sys.executable, "selezione_oggi.py", "--no-download"],
+        esito = subprocess.run([sys.executable, "selezione_oggi.py", "--no-download",
+                                "--mercato", tu.mercato],
                                cwd=BASE_DIR, capture_output=True, text=True, timeout=600)
         ok = os.path.exists(percorso)
         print(f"[portafoglio] {'creato' if ok else 'non creato'}")
@@ -104,7 +112,26 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Prepara le cache necessarie alla dashboard")
     ap.add_argument("--forza", action="store_true", help="riscarica tutto")
     ap.add_argument("--solo-storico", action="store_true", help="solo la cache storica")
+    ap.add_argument("--mercato", default="IT", help="IT, DE, FR oppure TUTTI (default IT)")
     args = ap.parse_args()
+
+    codici = tu.elenco_mercati() if args.mercato.upper() in ("TUTTI", "ALL", "*") else [args.mercato.upper()]
+    esiti = []
+    for cod in codici:
+        m = tu.imposta_mercato(cod)
+        print(f"\n=== {cod} · {m['paese']} ({m['nome']}) — {len(tu.solo_ticker())} titoli · benchmark {m['benchmark_nome']} ===")
+        esiti.append((cod, cache_storico(args.forza),
+                      True if args.solo_storico else cache_live(args.forza),
+                      True if args.solo_storico else portafoglio_iniziale()))
+
+    print("\nRiepilogo bootstrap:")
+    for cod, ok_s, ok_l, ok_p in esiti:
+        etichetta = f"{cod:2} {tu.MERCATI[cod]['nome']:14}"
+        if args.solo_storico:
+            print(f"  {etichetta} cache storica: {'ok' if ok_s else 'MANCANTE'}")
+        else:
+            print(f"  {etichetta} storica {'ok' if ok_s else 'MANCANTE'} · giornaliera {'ok' if ok_l else 'MANCANTE'} · portafoglio {'ok' if ok_p else 'MANCANTE'}")
+    return 0 if all(all(e[1:]) for e in esiti) else 1
 
     ok_storico = cache_storico(args.forza)
     ok_live = True if args.solo_storico else cache_live(args.forza)

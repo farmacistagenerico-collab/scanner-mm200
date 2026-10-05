@@ -324,11 +324,11 @@ def main() -> int:
     ap.add_argument("--n", type=int, default=10)
     ap.add_argument("--buffer", type=int, default=5)
     ap.add_argument("--liquidita", type=float, default=2_000_000)
-    ap.add_argument("--attuale", default=os.path.join(OUT_DIR, "portafoglio_attuale.csv"))
+    ap.add_argument("--attuale", default=None, help="default: output/portafoglio_attuale.csv (o _XX)")
     ap.add_argument("--trimestrale", action="store_true")
     ap.add_argument("--no-download", action="store_true")
     ap.add_argument("--solo-verdetto", action="store_true", help="stampa una riga sola")
-    ap.add_argument("--out", default=os.path.join(OUT_DIR, "operativita_oggi.html"))
+    ap.add_argument("--out", default=None, help="default: output/operativita_oggi.html (o _XX)")
     args = ap.parse_args()
 
     oggi = pd.Timestamp(datetime.now().date())
