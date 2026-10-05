@@ -1,0 +1,35 @@
+# --- credenziali e configurazione locale (MAI su GitHub) ---
+config_live.json
+.netrc
+.env
+
+# --- cache dati (grandi, ricostruibili con bootstrap_dati.py) ---
+cache/
+*.pkl
+
+# --- output di lavoro (i report .html principali si possono versionare se vuoi) ---
+output/*.log
+output/*_log.txt
+output/stato_live.json
+output/portafoglio_attuale.csv
+output/selezione_*.csv
+output/selezione_oggi.md
+output/punteggio_oggi.csv
+output/*_equity.csv
+output/*_varianti.csv
+output/*_per_anno.csv
+output/*_is_oos.csv
+output/*_liquidita.csv
+output/*_crash.csv
+output/backtest_*.csv
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- sistema ---
+.DS_Store
+Thumbs.db

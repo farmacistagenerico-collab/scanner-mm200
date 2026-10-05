@@ -1,0 +1,20 @@
+{
+  "_istruzioni": "Copia in config_live.json (lo stesso file, senza .example) e riempi solo le parti che ti servono. Il file config_live.json non va condiviso: contiene credenziali.",
+  "ogni_minuti": 20,
+  "digest_ora": "",
+  "telegram": {
+    "token": "",
+    "chat_id": ""
+  },
+  "smtp": {
+    "host": "",
+    "porta": 587,
+    "utente": "",
+    "password": "",
+    "a": "mio.indirizzo@example.com"
+  },
+  "auth": {
+    "utente": "",
+    "password": ""
+  }
+}

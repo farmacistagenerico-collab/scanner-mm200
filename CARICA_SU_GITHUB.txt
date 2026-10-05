@@ -1,0 +1,80 @@
+CARICA SU GITHUB — 3 minuti, senza terminale
+============================================
+
+Cosa contiene questo archivio
+-----------------------------
+Tutto il progetto già pronto per GitHub (61 file, ~5 MB):
+  - il workflow .github/workflows/aggiorna.yml  -> aggiorna la pagina da solo, 2 volte al giorno
+  - dashboard.py, punteggio.py, bootstrap_dati.py, grafici.py, ... (il codice)
+  - output/index.html  -> la pagina che verrà pubblicata
+  - deploy/PUBBLICA_SU_GITHUB.md -> guida completa
+
+NON contiene (volutamente): cache/ (56 MB di dati, si ricostruiscono in cloud),
+config_live.json (le tue credenziali), i file di lavoro.
+
+
+Passo 1 — Crea il repository
+----------------------------
+1. Vai su https://github.com/new
+2. Repository name: scanner-mm200
+3. Spunta "Public" (con GitHub free Pages lo richiede)
+4. NON spuntare README / .gitignore / license
+5. Clicca "Create repository"
+
+
+Passo 2 — Carica i file
+-----------------------
+A) Scompatta lo zip: ottieni la cartella "scanner-mm200".
+
+B) Nella pagina del repository clicca "Add file" -> "Upload files".
+
+C) Trascina DENTRO la pagina TUTTO il contenuto della cartella
+   (Ctrl+A / Cmd+A su tutti i file e le cartelle, poi trascina).
+   Attenzione: trascina il CONTENUTO, non la cartella stessa, altrimenti
+   GitHub crea un livello in più.
+
+D) In fondo: "Commit changes".
+
+   NOTA sulla cartella nascosta .github
+   ------------------------------------
+   Se il tuo browser o il tuo sistema nasconde le cartelle che iniziano
+   con un punto, il workflow potrebbe non essere caricato. Per sicurezza,
+   dopo il punto D controlla che nel repository esista il file
+   .github/workflows/aggiorna.yml. Se manca, crealo a mano:
+     1. "Add file" -> "Create new file"
+     2. nel campo del nome scrivi esattamente:
+        .github/workflows/aggiorna.yml
+        (digitando le barre "/" GitHub crea le cartelle da solo)
+     3. apri deploy/github-actions/aggiorna.yml dal tuo computer,
+        copia tutto il contenuto e incollalo
+     4. "Commit changes"
+
+
+Passo 3 — Attiva GitHub Pages
+-----------------------------
+Nel repository: Settings -> Pages -> alla voce "Source" scegli
+"GitHub Actions" (NON "Deploy from a branch"). Salva.
+
+
+Passo 4 — Primo aggiornamento
+-----------------------------
+Nella scheda "Actions" del repository:
+   - a sinistra clicca "Aggiorna dashboard"
+   - pulsante "Run workflow" -> "Run workflow"
+Attendi 3-6 minuti (il primo giro scarica 130 titoli e costruisce la cache).
+Quando il pallino è verde, la pagina è online su:
+
+   https://TUONOME.github.io/scanner-mm200/
+
+Aprila dal telefono e aggiungila alla schermata Home: diventa un'app.
+
+
+Da qui in avanti
+----------------
+- ogni giorno feriale ~08:30 e ~17:45 (ora italiana) la pagina si aggiorna da sola;
+- nella pagina c'è il pulsante "Aggiorna su GitHub ->" per forzare un aggiornamento;
+- se un job fallisce GitHub ti manda un'email: di solito è Yahoo Finance che
+  risponde "troppe richieste", basta rilanciare il job.
+
+Se vuoi tenere le posizioni private, leggi in fondo a
+deploy/PUBBLICA_SU_GITHUB.md (tre alternative, dalla più semplice).
