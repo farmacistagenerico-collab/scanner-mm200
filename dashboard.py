@@ -104,18 +104,9 @@ def _etichetta_mercato():
 
 
 def _tabs_html():
-    cod = tu.mercato
-    pezzi = []
-    for c in tu.elenco_mercati():
-        m = tu.MERCATI[c]
-        attivo = c == cod
-        stile = ("background:#0f172a;color:#fff;font-weight:800"
-                 if attivo else "background:#e2e8f0;color:#334155;font-weight:600")
-        pezzi.append(f'<a href="{PAGINE_MERCATO[c]}" style="text-decoration:none;border-radius:9px;'
-                     f'padding:8px 14px;font-size:13.5px;{stile}">{m["paese"]}</a>')
-    return ('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px">'
-            '<span style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#64748b;'
-            'font-weight:700;margin-right:4px">Mercato</span>' + "".join(pezzi) + '</div>')
+    """Barra di navigazione del sito: mercati + Punteggi + Operativo + Previsione."""
+    import sito
+    return sito.nav_per_mercato(tu.mercato)
 
 
 def _nota_affidabilita_html():
@@ -961,6 +952,20 @@ async function aggiorna() {{
             f.write(html)
     except Exception as e:
         print(f"[pages] {e}")
+
+    # le altre due sezioni del sito: la pagina operativa (sempre rigenerabile) e
+    # i ventagli (serve il backtest; se manca, resta la versione già pubblicata)
+    try:
+        import operativo
+        operativo.genera()
+    except Exception as e:
+        print(f"[pages] operativo: {type(e).__name__}: {e}")
+    if cod == "IT":     # i ventagli sono unici per i tre mercati: li fa un giro solo
+        try:
+            import previsione
+            previsione.genera(verboso=False)
+        except Exception as e:
+            print(f"[pages] previsione: {type(e).__name__}: {e}")
     return percorso
 
 
@@ -1273,10 +1278,29 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
+        # pagine del sito servite in locale con lo stesso indirizzo che avranno online,
+    # così i collegamenti della barra di navigazione funzionano anche in anteprima
+    PAGINE_SITO = ("de.html", "fr.html", "punteggio.html", "punteggio_de.html",
+                   "punteggio_fr.html", "operativo.html", "previsione.html", "esplora.html")
+
+    def _servi_pagina(self, nome: str) -> bool:
+        if nome not in self.PAGINE_SITO:
+            return False
+        f = os.path.join(OUT_DIR, nome)
+        if not os.path.exists(f):
+            self._invia(f"<h1>Pagina non ancora generata: {nome}</h1>".encode("utf-8"),
+                        "text/html; charset=utf-8", 404)
+            return True
+        with open(f, encoding="utf-8") as fh:
+            self._invia(fh.read().encode("utf-8"), "text/html; charset=utf-8")
+        return True
+
     def do_GET(self):
         if not self._autorizzato():
             return self._chiedi_password()
         percorso = self.path.split("?")[0]
+        if percorso.startswith("/") and self._servi_pagina(percorso[1:]):
+            return
         if percorso in ("/", "/index.html"):
             self._invia(PAGINA.encode("utf-8"), "text/html; charset=utf-8")
         elif percorso in ("/statico", "/statico.html"):
@@ -1363,6 +1387,7 @@ def avvio(porta: int, apri_browser: bool):
 
 
 def main_con_mercato(codice: str, args) -> int:
+
     """Esegue la dashboard per il mercato indicato, con gli argomenti già letti.
 
     Imposta il mercato (liste titoli, benchmark, percorsi di cache e output) e

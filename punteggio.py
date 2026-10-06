@@ -44,7 +44,8 @@ warnings.filterwarnings("ignore")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
-import titoli_italiani as tu      # noqa: E402
+import titoli_italiani as tu
+import sito      # noqa: E402
 import indicatori as ind          # noqa: E402
 import selezione_oggi as so       # noqa: E402
 import grafici as gr              # noqa: E402
@@ -319,10 +320,11 @@ def scrivi_html(path, data_dati, verdetto, righe: pd.DataFrame, val: pd.DataFram
 </style></head>
 <body style="margin:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
 <div style="max-width:880px;margin:0 auto;padding:16px 12px 36px">
+  {sito.nav_html('punteggio.html')}
 
   <div style="background:#0f172a;color:#fff;border-radius:14px;padding:20px">
     <div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#94a3b8">
-      Piazza Affari · dati al {data_dati}</div>
+      Punteggi · dati al {data_dati}</div>
     <div style="font-size:26px;font-weight:900;margin:8px 0 4px">{verdetto}</div>
     <div style="color:#cbd5e1;font-size:14px">
       Punteggio = probabilità storica di chiusura positiva a 12 mesi per questo titolo.</div>
