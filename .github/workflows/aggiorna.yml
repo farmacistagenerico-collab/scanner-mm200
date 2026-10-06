@@ -1,33 +1,37 @@
 # =============================================================================
-#  Aggiorna la dashboard di Piazza Affari e la pubblica su GitHub Pages
+#  Aggiorna il sito dei tre mercati (Italia, Germania, Francia)
 # =============================================================================
 #  Come funziona:
-#    GitHub esegue questo file da solo 2 volte al giorno nei feriali
-#    (~08:30 e ~17:45 ora italiana): scarica i dati, ricalcola punteggi,
-#    classifica e curva della strategia, e salva index.html aggiornato nel
-#    repository. GitHub Pages lo pubblica da solo: il sito non ha mai bisogno
-#    del tuo computer acceso.
+#    GitHub esegue questo file da solo, nei feriali:
+#      - ogni 30 minuti mentre le Borse sono aperte -> prezzi quasi in diretta
+#      - ~08:30 (prima dell'apertura) e ~17:45 (dopo la chiusura) -> prezzi ufficiali
 #
-#  Avvio a mano: scheda "Actions" del repository → "Aggiorna dashboard"
-#                → pulsante "Run workflow".
+#    Per OGNI mercato scarica i dati, ricalcola punteggi, classifica e curva della
+#    strategia, ricalcola il backtest (serve ai ventagli) e salva le pagine nel
+#    repository. GitHub Pages le pubblica da solo: nessun computer acceso.
+#
+#    Le sezioni del sito:
+#        index.html      Italia         de.html        Germania
+#        fr.html         Francia        punteggio*.html Punteggi
+#        operativo.html  la regola      previsione.html ventagli dei percorsi
+#
+#  Avvio a mano: scheda "Actions" -> "Aggiorna dashboard" -> "Run workflow".
 #
 #  DOVE VA MESSO (l'unica cosa che conta):   .github/workflows/aggiorna.yml
-#  (il percorso deve iniziare con ".github/workflows/", altrimenti GitHub lo ignora)
+#  (se il percorso non inizia con ".github/workflows/", GitHub lo ignora)
 # =============================================================================
 name: Aggiorna dashboard
 
 on:
   schedule:
-    # ATTENZIONE: gli orari sono in UTC.
-    # 06:30 UTC = 08:30 a Milano (estate) / 07:30 (inverno) → lettura pre-apertura
-    # 15:45 UTC = 17:45 a Milano (estate) / 16:45 (inverno) → dopo la chiusura
-    - cron: "30 6 * * 1-5"
-    - cron: "45 15 * * 1-5"
-    - cron: "7,37 7-15 * * 1-5"
-  workflow_dispatch:        # avvio manuale (è il tasto "Aggiorna su GitHub" della pagina)
+    # ATTENZIONE: gli orari sono in UTC (a Milano: +2h d'estate, +1h d'inverno).
+    - cron: "30 6 * * 1-5"          # 08:30 -> prima dell'apertura (chiusura di ieri)
+    - cron: "7,37 7-15 * * 1-5"     # ogni 30 min dalle 09:07 alle 17:37 -> borse aperte
+    - cron: "45 15 * * 1-5"         # 17:45 -> prezzi di chiusura ufficiali
+  workflow_dispatch:        # avvio manuale (e' il tasto "Aggiorna su GitHub" della pagina)
 
 permissions:
-  contents: write           # serve per salvare il nuovo index.html nel repository
+  contents: write           # serve per salvare le pagine aggiornate nel repository
 
 concurrency:
   group: aggiorna-dashboard
@@ -36,7 +40,7 @@ concurrency:
 jobs:
   aggiorna:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Scarica il codice
         uses: actions/checkout@v4
@@ -50,23 +54,59 @@ jobs:
       - name: Installa le dipendenze
         run: pip install -r requirements.txt
 
-      - name: Recupera le cache dati (56 MB, vivono qui e non nel repository)
+      - name: Recupera le cache dati (vivono qui, non nel repository)
         uses: actions/cache@v4
         with:
           path: cache
-          key: dati-${{ github.run_id }}
+          key: dati-${{ github.run_id }}      # chiave nuova a ogni giro: la copia di riserva resta fresca
           restore-keys: |
             dati-
 
-      - name: Bootstrap dati (scarica la storia solo se manca)
-        run: python bootstrap_dati.py
+      - name: Bootstrap dati dei 3 mercati (scarica la storia solo se manca)
+        run: |
+          for M in IT DE FR; do
+            echo "=== bootstrap $M ==="
+            python bootstrap_dati.py --mercato "$M" || echo "::warning::bootstrap $M non riuscito"
+          done
 
-      - name: Calcola la pagina di oggi
-        run: python dashboard.py --una-tantum
-
-      - name: Pagina con i punteggi per titolo (opzionale)
+      - name: Backtest dei 3 mercati (curve della strategia e ventagli)
         continue-on-error: true
-        run: python punteggio.py
+        run: |
+          for M in IT DE FR; do
+            echo "=== backtest $M ==="
+            python momentum_risk.py --mercato "$M" --dal 2010-01-01 || echo "::warning::backtest $M non riuscito"
+          done
+
+      - name: Calcola le pagine dei 3 mercati (3 tentativi per mercato)
+        run: |
+          # Yahoo a volte limita le richieste dai server: se il download fallisce
+          # la pagina userebbe la cache. Qui riproviamo fino a 3 volte per mercato.
+          for M in IT DE FR; do
+            if [ "$M" = "IT" ]; then PAGINA=output/index.html; else PAGINA=output/$(echo "$M" | tr 'A-Z' 'a-z').html; fi
+            for tentativo in 1 2 3; do
+              echo "=== $M · tentativo $tentativo ==="
+              python dashboard.py --una-tantum --mercato "$M" || true
+              if [ -f "$PAGINA" ] && ! grep -q "cache locale" "$PAGINA"; then
+                echo "$M: prezzi freschi."
+                break
+              fi
+              echo "::warning::$M: download non riuscito, uso la cache. Riprovo fra 60 secondi..."
+              sleep 60
+            done
+          done
+
+      - name: Pagine con i punteggi per titolo
+        continue-on-error: true
+        run: |
+          for M in IT DE FR; do
+            python punteggio.py --mercato "$M" || echo "::warning::punteggi $M non riusciti"
+          done
+
+      - name: Pagina operativa e ventagli dei percorsi
+        continue-on-error: true
+        run: |
+          python operativo.py || echo "::warning::pagina operativa non riuscita"
+          python previsione.py || echo "::warning::ventagli non riusciti"
 
       - name: Pubblica nel repository (GitHub Pages la serve da sola)
         run: |
@@ -75,25 +115,53 @@ jobs:
 
           cp output/index.html index.html
           git add index.html
-          if [ -f output/punteggio.html ]; then
-            cp output/punteggio.html punteggio.html
-            git add punteggio.html
-          fi
+          for M in de fr; do
+            if [ -f "output/$M.html" ]; then
+              cp "output/$M.html" "$M.html"
+              git add "$M.html"
+            fi
+          done
+          for F in output/punteggio.html output/punteggio_de.html output/punteggio_fr.html \
+                   output/operativo.html output/previsione.html; do
+            if [ -f "$F" ]; then
+              cp "$F" "$(basename "$F")"
+              git add "$(basename "$F")"
+            fi
+          done
           git add output/*.html 2>/dev/null || true
 
           if git diff --cached --quiet; then
-            echo "Nessuna modifica da salvare: la pagina era già aggiornata."
+            echo "Nessuna modifica da salvare: le pagine erano gia' aggiornate."
           else
-            git commit -m "Aggiorna dashboard ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git commit -m "Aggiorna sito 3 mercati ($(date -u '+%Y-%m-%d %H:%M UTC'))"
             if ! git push; then
               echo "::error::GitHub ha negato il salvataggio. Vai su Settings -> Actions -> General -> Workflow permissions, scegli 'Read and write permissions' e rilancia il job."
               exit 1
             fi
-            echo "Pagina aggiornata e pubblicata."
+            echo "Pagine aggiornate e pubblicate."
           fi
 
       - name: Riepilogo del giorno
         run: |
-          echo "### Dashboard aggiornata" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Sito aggiornato (Italia · Germania · Francia)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           head -c 1200 output/selezione_oggi.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - name: Controllo freschezza dei dati
+        run: |
+          for P in output/index.html output/de.html output/fr.html; do
+            D=$(grep -oE "chiusura [0-9]{4}-[0-9]{2}-[0-9]{2}" "$P" | head -1 | awk '{print $2}')
+            [ -n "$D" ] && echo "$(basename "$P"): dati di chiusura $D"
+          done
+          DATA=$(grep -oE "chiusura [0-9]{4}-[0-9]{2}-[0-9]{2}" output/index.html | head -1 | awk '{print $2}')
+          if [ -z "$DATA" ]; then
+            echo "::warning::non riesco a leggere la data di chiusura nella pagina."
+            exit 0
+          fi
+          ETA=$(( ( $(date -u +%s) - $(date -u -d "$DATA" +%s) ) / 86400 ))
+          echo "Dati di chiusura: $DATA (eta: $ETA giorni)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ETA" -gt 7 ]; then
+            echo "::error::I dati hanno $ETA giorni: Yahoo sta bloccando gli aggiornamenti da GitHub. Apri la dashboard sul tuo PC e avvia 'python3 bootstrap_dati.py --forza --mercato TUTTI' per rinfrescare."
+            exit 1
+          fi
+          echo "Freschezza OK."
