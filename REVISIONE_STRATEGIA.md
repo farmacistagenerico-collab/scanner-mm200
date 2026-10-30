@@ -59,6 +59,13 @@ rendimenti storici: prima rende il confronto onesto, poi si potrà cercare un se
 - **Dati reali non ricalcolati in questa revisione locale**: i test sono sintetici. Il prossimo
   passo è eseguire bootstrap/backtest su GitHub Actions o in locale con cache Yahoo aggiornata.
 
+## Risultato del ricalcolo reale
+
+Il backtest Italia è stato ricalcolato su GitHub Actions con dati Yahoo aggiornati.
+La variante con buffer 5 risulta sopra il paniere liquido equipesato nel periodo
+2010-2026, ma il risultato resta esplorativo. Dettagli e tabella:
+[`RISULTATI_BACKTEST_IT.md`](RISULTATI_BACKTEST_IT.md).
+
 ## Protocollo per la prossima passata
 
 1. Eseguire i test: `python -m unittest discover -s tests -v`.
