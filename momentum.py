@@ -53,29 +53,69 @@ OUT_DIR = os.path.join(BASE_DIR, "output")
 # costruzione del pannello mensile
 # ---------------------------------------------------------------------------
 
-def pannello_mensile(df: pd.DataFrame) -> pd.DataFrame:
-    """Chiuse mensili, turnover mediano, flag MM200, volatilità 12 mesi."""
-    d = df.dropna(subset=["Close"]).copy()
+def pannello_mensile(df: pd.DataFrame, mercato: str = "IT") -> pd.DataFrame:
+    """Pannello mensile con mesi conclusi e prezzo di esecuzione successivo.
+
+    Il segnale matura alla chiusura dell'ultima sessione del mese t; l'ingresso
+    ipotetico avviene alla prima chiusura disponibile dopo tale chiusura. La
+    colonna `exec_close` del mese t è quindi il prezzo di ingresso del mese t+1.
+    """
+    import momentum_core as mc
+
+    d = df.dropna(subset=["Close"]).sort_index().copy()
+    d = d[~d.index.duplicated(keep="last")]
+    if d.index.tz is not None:
+        d.index = d.index.tz_localize(None)
+    if d.empty:
+        return pd.DataFrame()
+    close_m = mc.mesi_conclusi(d["Close"], d.index[-1], mercato)
     m = pd.DataFrame({
-        "close": d["Close"].resample("ME").last(),
-        "turnover": (d["Close"] * d["Volume"]).resample("ME").median(),
+        "close": close_m,
+        "turnover": (d["Close"] * d["Volume"]).resample("ME").median().reindex(close_m.index),
     })
     mm200 = ind.sma(d["Close"], 200)
     sopra = (d["Close"] > mm200).resample("ME").last()
     m["sopra_mm200"] = sopra.reindex(m.index).fillna(False).astype(bool)
     rend_m = m["close"].pct_change()
     m["vol12"] = rend_m.rolling(12, min_periods=8).std()
+    # Prima chiusura della sessione successiva alla fine del mese del segnale.
+    prime = d["Close"].resample("ME").first()
+    date_prime = pd.Series(d.index, index=d.index).resample("ME").first()
+    m["exec_close"] = prime.shift(-1).reindex(m.index)
+    m["exec_date"] = date_prime.shift(-1).reindex(m.index)
     return m
 
 
-def statistiche(eq: pd.Series, mesi: int, turnover_medio: float | None = None,
+def sotto_periodo(eq: pd.Series, da: int, a: int) -> pd.Series:
+    """Estrae un periodo includendo il punto di confine precedente.
+
+    Senza il confine, il rendimento del primo mese del periodo verrebbe perso.
+    """
+    if eq is None or eq.empty:
+        return pd.Series(dtype=float)
+    inizio = pd.Timestamp(year=da, month=1, day=1)
+    fine = pd.Timestamp(year=a, month=12, day=31)
+    prima = eq[eq.index < inizio]
+    dentro = eq[(eq.index >= inizio) & (eq.index <= fine)]
+    pezzi = ([prima.iloc[-1:]] if len(prima) else []) + [dentro]
+    return pd.concat(pezzi) if pezzi else pd.Series(dtype=float)
+
+
+def statistiche(eq: pd.Series, mesi: int | None = None, turnover_medio: float | None = None,
                 n_medio: float | None = None) -> dict:
-    """Statistiche annualizzate da una serie di equity mensile."""
+    """Statistiche annualizzate da una serie di equity mensile.
+
+    Il CAGR usa il numero di rendimenti effettivi (punti - 1), non il numero di
+    punti: la serie include il capitale iniziale. `mesi` resta nella firma per
+    compatibilità ma non guida più l'annualizzazione.
+    """
     if eq is None or len(eq) < 12:
         return {}
-    anni = mesi / 12
-    cagr = (eq.iloc[-1] / eq.iloc[0]) ** (1 / anni) - 1
     rm = eq.pct_change().dropna()
+    if rm.empty:
+        return {}
+    anni = len(rm) / 12
+    cagr = (eq.iloc[-1] / eq.iloc[0]) ** (1 / anni) - 1
     vol = rm.std() * np.sqrt(12)
     sharpe = (rm.mean() * 12) / vol if vol > 0 else np.nan
     dd = float((eq / eq.cummax() - 1).min() * 100)

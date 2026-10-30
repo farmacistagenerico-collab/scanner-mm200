@@ -45,9 +45,9 @@ VARIANTE = {
     "FR": "① Base MOM 12-1 top10 + MM200 (mensile)",
 }
 NOTE = {
-    "IT": "Regola operativa consigliata (buffer di rank 5, ri-bilanciamento trimestrale).",
-    "DE": "Variante base: in Germania ha fatto meglio di quella con buffer (+17,0% contro +15,8%).",
-    "FR": "Curva mostrata solo come monitor: in Francia la selezione non ha battuto l'insieme dei titoli.",
+    "IT": "Curva storica esplorativa (buffer di rank 5, ribilanciamento trimestrale). Non è una previsione.",
+    "DE": "Curva storica esplorativa (variante base). Non è una previsione.",
+    "FR": "Curva storica esplorativa, solo monitor. Non è una previsione.",
 }
 
 

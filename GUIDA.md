@@ -1,11 +1,17 @@
 # GUIDA PRATICA — come si usa questo progetto
 
+> 🔧 **Revisione 2026-10-30.** La regola operativa ora usa la stessa definizione del backtest
+> (mesi conclusi, 12-1, liquidità storica, nessuno slot riempito allentando i filtri, costi su
+> ogni transizione). Il confronto principale è il **paniere liquido equipesato** con stesse
+> date/costi. I numeri storici precedenti non sono una prova di edge: leggi
+> [`REVISIONE_STRATEGIA.md`](REVISIONE_STRATEGIA.md) prima di operare.
+
 Tre livelli d'uso, dal più semplice al più avanzato. Scegli in base a cosa ti serve.
 
 | Livello | Strumento | Cosa ottieni | Frequenza |
 |---|---|---|---|
 | **1. Lista d'attenzione** | `scanner.py` | i titoli di Piazza Affari "pronti a rompere" la MM200, con punteggio e report HTML | settimanale (5 min) |
-| **2. Portafoglio operativo** | `selezione_oggi.py` | il portafoglio momentum 12-1 validato, pronto da eseguire (nomi, pesi, quote, operazioni) | mensile (10 min) |
+| **2. Portafoglio operativo** | `selezione_oggi.py` | il portafoglio momentum 12-1 calcolato con la regola condivisa, da valutare prima di eseguire (nomi, pesi, quote, operazioni) | mensile (10 min) |
 | **2-bis. Cruscotto del giorno** | `operativita_oggi.py` | la risposta a "**oggi cosa faccio?**": verdetto, margini di uscita, candidati, contesto | **ogni giorno (10 sec)** |
 | **2-ter. Punteggio per titolo** | `punteggio.py` | il **punteggio 0-100** di probabilità storica di successo di ogni azione + affidabilità del dato | quando vuoi il dettaglio per titolo |
 | **2-quater. Dashboard live** | `dashboard.py` | la stessa pagina **con il tasto di aggiornamento in tempo reale**, l'**auto-refresh**, la **classifica completa** e i grafici | mentre segui il mercato |
@@ -14,14 +20,14 @@ Tre livelli d'uso, dal più semplice al più avanzato. Scegli in base a cosa ti 
 
 > Livello 1 = **osservazione**: dagli esperimenti risulta che la rottura della MM200, con qualunque filtro,
 > non batte il caso in portafoglio (§6 README). Serve a *capire il mercato*, non a guadagnare.
-> Livello 2 = **la parte che ha un edge misurato e stabile** (README §7 e §7.5): è qui che sta l'operatività.
+> Livello 2 = **la parte operativa in revisione**: la regola è condivisa col backtest, ma i numeri storici non sono una prova di edge.
 
 ---
 
 ## 0. Installazione (una volta sola)
 
 ```bash
-pip install yfinance pandas numpy scipy
+pip install -r requirements.txt
 cd scanner_mm200
 ```
 

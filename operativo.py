@@ -29,11 +29,11 @@ import sito                        # noqa: E402
 
 OUT_DIR = os.path.join(BASE_DIR, "output")
 
-# valori di riserva (backtest 2010-2026), usati se i riepiloghi non sono leggibili
+# Nessun valore di riserva: senza riepilogo ricalcolato la pagina mostra "n/d".
 RISERVA = {
-    "IT": {"cagr": 18.73, "sharpe": 0.96, "dd": -33.7, "universo": 11.7, "casuali": 6.3},
-    "DE": {"cagr": 16.63, "sharpe": 0.91, "dd": -33.8, "universo": 13.4, "casuali": 6.2},
-    "FR": {"cagr": 10.76, "sharpe": 0.74, "dd": -24.7, "universo": 11.1, "casuali": 4.3},
+    "IT": {"cagr": None, "sharpe": None, "dd": None, "universo": None, "casuali": None},
+    "DE": {"cagr": None, "sharpe": None, "dd": None, "universo": None, "casuali": None},
+    "FR": {"cagr": None, "sharpe": None, "dd": None, "universo": None, "casuali": None},
 }
 NOMI_VARIANTE = {
     "IT": "② + buffer di rank 5",
@@ -54,7 +54,7 @@ def numeri(cod: str) -> dict:
                 d["cagr"] = round(v["CAGR_%"], 1)
                 d["sharpe"] = round(v["Sharpe"], 2)
                 d["dd"] = round(v["max_drawdown_%"], 1)
-            elif "Universo" in v["variante"]:
+            elif v["variante"] == "◇ Paniere liquido equipesato (stessi costi/date)":
                 d["universo"] = round(v["CAGR_%"], 1)
             elif "casuali" in v["variante"]:
                 d["casuali"] = round(v["CAGR_%"], 1)
@@ -65,10 +65,20 @@ def numeri(cod: str) -> dict:
 
 def date_operative(oggi: pd.Timestamp | None = None) -> dict:
     """Prossime verifiche (ultima seduta del mese) e primo giorno utile per gli ordini."""
-    oggi = pd.Timestamp.now().normalize() if oggi is None else oggi
-    verifiche = [d for d in pd.date_range(oggi, periods=13, freq="BME")][:6]
+    import momentum_core as mc
+    oggi = pd.Timestamp.now(tz="Europe/Rome").normalize() if oggi is None else pd.Timestamp(oggi)
+    if oggi.tzinfo is not None:
+        oggi = oggi.tz_convert("Europe/Rome").tz_localize(None)
+    cal = mc.calendario_mercato("IT")
+    sessioni = cal.sessions_in_range(oggi, oggi + pd.DateOffset(months=8))
+    verifiche = []
+    for mese in pd.period_range(oggi, periods=8, freq="M"):
+        nel_mese = sessioni[(sessioni.year == mese.year) & (sessioni.month == mese.month)]
+        if len(nel_mese):
+            verifiche.append(nel_mese[-1].normalize())
+    verifiche = verifiche[:6]
     prima = verifiche[0]
-    ordini = prima + pd.offsets.BDay(1)
+    ordini = cal.next_session(prima)
     return {
         "verifiche": [f"{d.day:02d}/{d.month:02d}/{d.year}" for d in verifiche],
         "prima": f"{prima.day:02d}/{prima.month:02d}/{prima.year}",
@@ -77,6 +87,8 @@ def date_operative(oggi: pd.Timestamp | None = None) -> dict:
 
 
 def _n(x, dec=1):
+    if x is None:
+        return "n/d"
     return f"{x:,.{dec}f}".replace(",", "@").replace(".", ",").replace("@", ".")
 
 
@@ -126,8 +138,8 @@ def costruisci() -> str:
     <div style="font-size:13.5px;color:#475569;line-height:1.65;margin-top:10px">
       Il cuscinetto dei 5 posti (15 invece di 10) serve a non fare trading inutile: si cambia un titolo
       solo quando esce davvero. Costo in operazioni: <b>14,5% al mese</b> con il cuscinetto, 24,3% senza.
-      Misurato 2010-2026: <b>+{_n(it['cagr'])}% annuo in Italia</b> e <b>+{_n(de['cagr'])}% in Germania</b>
-      (Sharpe {_n(it['sharpe'], 2)} e {_n(de['sharpe'], 2)}).</div>
+      Confronto principale: paniere liquido equipesato con stesse date/costi. I numeri storici sono
+      esplorativi: survivorship bias non rimosso e nessun holdout intatto.</div>
   </div>
 
   <div class="box">
@@ -165,13 +177,13 @@ def costruisci() -> str:
     <table>
       <thead><tr><th>Tentazione</th><th>Risultato nei dati</th></tr></thead>
       <tbody>
-        {riga_tentazione("Stop loss, uscite &quot;di protezione&quot;", "ogni overlay peggiora: 2,65% · 3,95% · 14,19% annuo contro 18,73%")}
-        {riga_tentazione("Inseguire le rotture della MM200", "nessun vantaggio: 11,59% vs 12,81%")}
+        {riga_tentazione("Stop loss, uscite &quot;di protezione&quot;", "da verificare nel backtest ricalcolato; non è una regola validata")}
+        {riga_tentazione("Inseguire le rotture della MM200", "fuori dalla regola mensile condivisa")}
         {riga_tentazione("Vendere perché è salito tanto, o a target", "si esce per regola, mai a target")}
         {riga_tentazione("Aggiungere un titolo che ti piace", f"i titoli a caso rendono {_n(it['casuali'])}% (Italia) e {_n(de['casuali'])}% (Germania)")}
         {riga_tentazione("Cambiare regola dopo un mese brutto", "la storia contiene anni a −17% e −21%: sono parte del contratto")}
         {riga_tentazione("Guardare i prezzi ogni giorno", "il metodo vive su orizzonti mensili")}
-        {riga_tentazione("Operare in Francia", f"selezione {_n(fr['cagr'])}% contro {_n(fr['universo'])}% dell'insieme: nessun edge")}
+        {riga_tentazione("Cambiare mercato senza un confronto comparabile", "usa il paniere liquido equipesato con stesse date/costi")}
       </tbody>
     </table>
   </div>
@@ -186,15 +198,15 @@ def costruisci() -> str:
           <b>Germania</b> mediana +18,6% · 90% dei casi −7,5% … +55,6% · 84% positivi
         </div>
         <div style="font-size:13px;color:#475569;line-height:1.6;margin-top:8px">
-          Un anno su tre è finito <b>in perdita</b> anche partendo da un regime favorevole. La fascia è
-          larga ~59 punti: serve a non spaventarsi, non a fissare un obiettivo.
+          I ventagli storici sono descrittivi, non previsionali. Dopo la revisione vanno riletti dai
+          file ricalcolati, non dai numeri hardcoded.
           <a href="previsione.html" style="color:#0a7d3c;font-weight:700">Vedi i ventagli →</a></div>
       </div>
       <div style="flex:1 1 240px">
         <div style="font-size:12.5px;color:#64748b;font-weight:700;margin-bottom:6px">IL NUMERO CHE DEVI REGGERE</div>
         <div style="font-size:15px;line-height:1.65">
-          Drawdown storico <b>{_n(it['dd'])}%</b> (Italia) e <b>{_n(de['dd'])}%</b> (Germania).<br>
-          Su 100.000 € investiti: <b>vedere 66.000 €</b> in un periodo brutto senza che nulla sia rotto.</div>
+          Drawdown storico: <b>{_n(it['dd'])}%</b> (Italia) e <b>{_n(de['dd'])}%</b> (Germania), se disponibili.
+          Il capitale può scendere molto: la regola non elimina il rischio di mercato.</div>
         <div style="font-size:13px;color:#475569;line-height:1.6;margin-top:8px">
           Se non lo reggi, riduci il capitale investito. <b>Non</b> cambiare la regola.</div>
       </div>
@@ -204,9 +216,9 @@ def costruisci() -> str:
   <div class="box">
     <h2>I tre mercati · dove si opera</h2>
     <div>
-      <span class="pill" style="background:#dcfce7;color:#166534">🇮🇹 Italia · operativo · +{_n(it['cagr'])}% annuo</span>
-      <span class="pill" style="background:#dcfce7;color:#166534">🇩🇪 Germania · operativo · +{_n(de['cagr'])}% annuo</span>
-      <span class="pill" style="background:#fef3c7;color:#92400e">🇫🇷 Francia · solo monitor · nessun edge</span>
+      <span class="pill" style="background:#fef3c7;color:#92400e">🇮🇹 Italia · revisione in corso</span>
+      <span class="pill" style="background:#fef3c7;color:#92400e">🇩🇪 Germania · revisione in corso</span>
+      <span class="pill" style="background:#fef3c7;color:#92400e">🇫🇷 Francia · monitor</span>
     </div>
     <div style="font-size:13.5px;color:#475569;line-height:1.65;margin-top:10px">
       Due portafogli separati, capitali separati, stesso calendario. La ripartizione fra Italia e Germania
