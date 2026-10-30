@@ -23,6 +23,12 @@
 name: Aggiorna dashboard
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.html"
+      - "output/**"
+      - "cache/**"
   schedule:
     # ATTENZIONE: gli orari sono in UTC (a Milano: +2h d'estate, +1h d'inverno).
     - cron: "30 6 * * 1-5"          # 08:30 -> prima dell'apertura (chiusura di ieri)
@@ -53,6 +59,9 @@ jobs:
 
       - name: Installa le dipendenze
         run: pip install -r requirements.txt
+
+      - name: Test di regressione (calendari, segnale, costi, benchmark)
+        run: python -m unittest discover -s tests -v
 
       - name: Recupera le cache dati (vivono qui, non nel repository)
         uses: actions/cache@v4

@@ -22,10 +22,10 @@ uno alla volta e in combinazione:
      tolleranza (buffer di rank); ribilanciamento mensile o trimestrale.
 
 Tutto è misurato con gli stessi controlli degli altri moduli: costi 0,2% per
-lato sul turnover effettivo, portafogli casuali come controllo, benchmark
-universo equipesato e FTSE MIB, split in-sample 2010-2017 / out-of-sample
-2018-2026, e analisi dei crash (peggiori mesi, durata del drawdown, tempo di
-recupero).
+lato sul nozionale scambiato, portafogli casuali come controllo, paniere
+liquido equipesato con stesse date/costi, indice come diagnostica non
+comparabile, split storico 2010-2017 / 2018-2026 (esplorativo, non un vero
+out-of-sample intatto) e analisi dei crash.
 
 Uso:
     python3 momentum_risk.py --dal 2010-01-01
@@ -48,6 +48,7 @@ sys.path.insert(0, BASE_DIR)
 
 import titoli_italiani as tu        # noqa: E402
 import momentum as mm              # noqa: E402
+import momentum_core as mc         # noqa: E402
 
 OUT_DIR = os.path.join(BASE_DIR, "output")
 CACHE = os.path.join(BASE_DIR, "cache", "momentum_raw.pkl")
@@ -64,7 +65,12 @@ def _cache_segui_mercato(cod=None):
 # ---------------------------------------------------------------------------
 
 def carica_pannelli(dal: str, aggiorna=False) -> tuple[dict, pd.DataFrame, pd.Series | None]:
-    """Ritorna (pannelli mensili, chiusure mensili comuni, FTSE MIB mensile)."""
+    """Ritorna (pannelli mensili, chiusure mensili, indice di riferimento mensile).
+
+    L'indice è quello configurato per il mercato attivo, non sempre il FTSE MIB.
+    Le barre dell'ultima sessione non sono usate finché la chiusura non è
+    confermata; il mese in corso resta escluso dai segnali.
+    """
     import yfinance as yf
 
     raw = None
@@ -76,8 +82,8 @@ def carica_pannelli(dal: str, aggiorna=False) -> tuple[dict, pd.DataFrame, pd.Se
             raw = None
     if raw is None:
         tickers = tu.solo_ticker()
-        print(f"Scarico {len(tickers)} titoli + FTSE MIB (poi uso la cache)...")
-        raw = yf.download(tickers + ["FTSEMIB.MI"], period="max", interval="1d",
+        print(f"Scarico {len(tickers)} titoli + {tu.BENCHMARK_NOME} (poi uso la cache)...")
+        raw = yf.download(tickers + [tu.BENCHMARK], period="max", interval="1d",
                           auto_adjust=True, group_by="ticker", threads=True, progress=False)
         os.makedirs(os.path.dirname(CACHE), exist_ok=True)
         try:
@@ -86,26 +92,29 @@ def carica_pannelli(dal: str, aggiorna=False) -> tuple[dict, pd.DataFrame, pd.Se
         except Exception:
             pass
 
+    cutoff = mc.ultima_sessione_utile(pd.Timestamp.now(tz="Europe/Rome"), tu.mercato)
     pannelli = {}
     for t in tu.solo_ticker():
         try:
             df = raw[t].dropna(how="all").dropna(subset=["Close"])
+            df = df[df.index.normalize() <= cutoff]
         except Exception:
             continue
         if len(df) > 700:
-            pannelli[t] = mm.pannello_mensile(df)
+            pannelli[t] = mm.pannello_mensile(df, tu.mercato)
 
     closes = pd.DataFrame({t: p["close"] for t, p in pannelli.items()})
     closes = closes[closes.index >= pd.Timestamp(dal)]
 
-    mib = None
+    indice = None
     try:
-        s = raw["FTSEMIB.MI"].dropna(subset=["Close"])["Close"]
-        mib = s.resample("ME").last()
-        mib = mib[mib.index >= pd.Timestamp(dal)]
-    except Exception:
-        pass
-    return pannelli, closes, mib
+        s = raw[tu.BENCHMARK].dropna(subset=["Close"])["Close"]
+        s = s[s.index.normalize() <= cutoff]
+        indice = mc.mesi_conclusi(s, cutoff, tu.mercato)
+        indice = indice[indice.index >= pd.Timestamp(dal)]
+    except Exception as e:
+        print(f"[avviso] indice {tu.BENCHMARK_NOME} non disponibile: {e}")
+    return pannelli, closes, indice
 
 
 # ---------------------------------------------------------------------------
@@ -113,87 +122,102 @@ def carica_pannelli(dal: str, aggiorna=False) -> tuple[dict, pd.DataFrame, pd.Se
 # ---------------------------------------------------------------------------
 
 def seleziona(elig: pd.DataFrame, precedente: list[str], n: int, buffer: int,
-              filtro_mm200: bool) -> list[str]:
-    """
-    Ranking di momentum con buffer: i titoli già in portafoglio restano finché
-    il loro rank non scivola oltre n+buffer; solo allora vengono sostituiti.
-    """
-    e = elig[elig["sopra_mm200"]] if filtro_mm200 else elig
-    if len(e) < n:
-        e = elig
-    ranked = list(e.sort_values("mom", ascending=False).index)
-    tetto = ranked[: n + buffer]
-    tenuti = [t for t in precedente if t in tetto]
-    nuovi = [t for t in ranked if t not in tenuti]
-    return (tenuti + nuovi)[:n]
+              filtro_mm200: bool, casuale: bool = False, rng=None) -> list[str]:
+    """Wrapper storico: la regola unica vive in momentum_core."""
+    return mc.seleziona_buffer(elig, precedente, n, buffer, filtro_mm200, casuale, rng)
 
 
 # ---------------------------------------------------------------------------
 # simulatore con volatilità target, overlay e buffer
 # ---------------------------------------------------------------------------
 
+def _elegibili(pannelli: dict, data_rib: pd.Timestamp, liquidita: float) -> pd.DataFrame:
+    """Universo eleggibile usando SOLO informazioni disponibili a data_rib."""
+    righe = {}
+    for t, p in pannelli.items():
+        if data_rib not in p.index:
+            continue
+        pos = p.index.get_loc(data_rib)
+        if pos < 13:
+            continue
+        finestra = mc.finestra_momentum(p["close"].iloc[:pos + 1])
+        turn = mc.liquidita_storica(p["turnover"], pos)
+        if finestra is None or not np.isfinite(turn) or turn < liquidita:
+            continue
+        righe[t] = {"mom": finestra[0], "sopra_mm200": bool(p["sopra_mm200"].iloc[pos])}
+    return pd.DataFrame(righe).T
+
+
+def _prezzi_esecuzione(pannelli: dict, data_rib: pd.Timestamp, mese_next: pd.Timestamp):
+    """Prezzi di ingresso/uscita: prima chiusura dopo la fine del mese segnale.
+
+    Restituisce (entry, exit, gaps). Un titolo senza prezzo di ingresso non viene
+    comprato; un titolo senza prezzo di uscita viene marcato come dato mancante.
+    Il risultato non è considerato validabile se ci sono gap sui titoli detenuti.
+    """
+    entry, exit_, gaps = {}, {}, []
+    for t, p in pannelli.items():
+        if "exec_close" not in p.columns:
+            continue
+        e = p["exec_close"].get(data_rib, np.nan)
+        u = p["exec_close"].get(mese_next, np.nan)
+        if np.isfinite(e) and e > 0:
+            entry[t] = float(e)
+        if np.isfinite(u) and u > 0:
+            exit_[t] = float(u)
+    return entry, exit_, gaps
+
+
+def _applica_periodo(equity, pesi_prima, target, entry, exit_, costo_lato):
+    """Applica costi sul nozionale scambiato e poi il rendimento del periodo."""
+    comprabili = {t: w for t, w in target.items() if t in entry}
+    gaps = [t for t in target if t not in entry or t not in exit_]
+    costo = mc.costo_transizione(pesi_prima, comprabili, costo_lato)
+    rend = {t: (exit_[t] / entry[t] - 1) for t in comprabili if t in exit_}
+    lordo = sum(w * rend.get(t, 0.0) for t, w in comprabili.items())
+    netto = (1 - costo) * (1 + lordo) - 1
+    equity *= (1 + netto)
+    pesi_dopo = mc.pesi_dopo_rendimenti(comprabili, {t: rend.get(t, 0.0) for t in comprabili})
+    return equity, pesi_dopo, costo, lordo, netto, gaps
+
+
 def simula_risk(pannelli: dict, mesi: list[pd.Timestamp], cfg, nome: str,
                 seed: int | None = None) -> tuple[pd.Series, dict]:
-    """
-    cfg richiede: n, n_minimo, liquidita, capitale, costo_lato, freq (1=mensile,
-    3=trimestrale), buffer, vol_target (None o es. 0.15), overlay ("none"|"ma"|"dd"),
-    filtro_mm200 (bool), casuale (bool)
+    """Simulazione con pesi reali, costi su ogni transizione e ingresso ritardato.
+
+    Il segnale matura alla chiusura del mese t; l'ingresso è alla prima chiusura
+    successiva. I filtri non vengono mai allentati per riempire gli slot: la
+    parte non investibile resta liquidità. L'eleggibilità non dipende dal fatto
+    che il titolo abbia dati nel mese successivo.
     """
     rng = np.random.default_rng(seed) if seed is not None else None
     equity = cfg.capitale
-    serie, dettagli = [], []
+    start = 13
+    serie = [(mesi[start], equity)] if len(mesi) > start else []
+    dettagli, gaps_tot = [], []
     corrente: list[str] = []
+    pesi: dict[str, float] = {}
     rend_storico: list[float] = []
     picco = equity
-    esposizione = 1.0
 
-    for i in range(13, len(mesi) - 1):
+    for i in range(start, len(mesi) - 1):
         data_rib, mese_next = mesi[i], mesi[i + 1]
+        elig = _elegibili(pannelli, data_rib, cfg.liquidita)
+        entry, exit_, _ = _prezzi_esecuzione(pannelli, data_rib, mese_next)
 
-        # ------- universo eleggibile (come momentum.py) -------
-        righe = {}
-        for t, p in pannelli.items():
-            if data_rib not in p.index or mese_next not in p.index:
-                continue
-            pos = p.index.get_loc(data_rib)
-            if pos < 13:
-                continue
-            c = p["close"]
-            mom = c.iloc[pos - 1] / c.iloc[pos - 13] - 1
-            turn = p["turnover"].iloc[max(0, pos - 3):pos].median()
-            if not np.isfinite(mom) or not np.isfinite(turn) or turn < cfg.liquidita:
-                continue
-            righe[t] = {"mom": mom, "sopra_mm200": bool(p["sopra_mm200"].iloc[pos])}
-        elig = pd.DataFrame(righe).T
-
-        # ------- selezione (solo ai ribilanciamenti) -------
-        ribilanciare = (len(dettagli) == 0) or (i % cfg.freq == 0)
-        if ribilanciare and len(elig) >= cfg.n_minimo:
-            if cfg.casuale:
-                idx = list(elig.index)
-                rng.shuffle(idx)
-                nuovo = idx[:cfg.n]
-            else:
-                nuovo = seleziona(elig, corrente, cfg.n, cfg.buffer, cfg.filtro_mm200)
+        ribilanciare = (i == start) or ((i - start) % cfg.freq == 0)
+        if ribilanciare:
+            nuovo = seleziona(elig, corrente, cfg.n, cfg.buffer, cfg.filtro_mm200,
+                              cfg.casuale, rng)
         else:
-            nuovo = [t for t in corrente if t in elig.index] or corrente
+            # Fra i ribilanciamenti si esce comunque da titoli non più liquidi o
+            # sotto MM200 (se il filtro è attivo), ma non si riequilibra il ranking.
+            tenuti = [t for t in corrente if t in elig.index]
+            if cfg.filtro_mm200:
+                tenuti = [t for t in tenuti if bool(elig.loc[t, "sopra_mm200"])]
+            nuovo = tenuti
 
-        if not nuovo:
-            serie.append((mese_next, equity))
-            continue
-
-        # ------- rendimento lordo del mese -------
-        rend_azioni = [float(pannelli[t]["close"].loc[mese_next] /
-                             pannelli[t]["close"].loc[data_rib] - 1)
-                       for t in nuovo
-                       if data_rib in pannelli[t].index and mese_next in pannelli[t].index]
-        rend_azioni = [r for r in rend_azioni if np.isfinite(r)]
-        if not rend_azioni:
-            serie.append((mese_next, equity))
-            continue
-        rend_loro = float(np.mean(rend_azioni))
-
-        # ------- esposizione: volatilità target + overlay -------
+        # Esposizione decisa con solo storico disponibile a data_rib.
         esp = 1.0
         if cfg.vol_target and len(rend_storico) >= 6:
             vol_real = float(np.std(rend_storico[-12:], ddof=1) * np.sqrt(12))
@@ -203,32 +227,39 @@ def simula_risk(pannelli: dict, mesi: list[pd.Timestamp], cfg, nome: str,
             eq_serie = pd.Series({d: v for d, v in serie})
             ma10 = eq_serie.rolling(10, min_periods=6).mean().iloc[-1]
             if np.isfinite(ma10) and equity < ma10:
-                esp *= 0.0                     # risk-off: in cash
+                esp = 0.0
         elif cfg.overlay == "dd":
             dd = (equity / picco - 1) * 100
             if dd < -25:
-                esp *= 0.0
+                esp = 0.0
             elif dd < -15:
-                esp *= 0.5
+                esp = 0.5
 
-        # ------- turnover e costi (solo sulla parte investita) -------
         if ribilanciare:
-            if not corrente:
-                turnover = 1.0
-            else:
-                turnover = 1 - len(set(nuovo) & set(corrente)) / max(len(nuovo), 1)
-            costo = turnover * 2 * cfg.costo_lato * esp
+            target = mc.pesi_target(nuovo, cfg.n, esp)
         else:
-            turnover, costo = 0.0, 0.0
+            base = {t: pesi[t] for t in nuovo if t in pesi}
+            slot = esp * len(nuovo) / cfg.n
+            somma = sum(base.values())
+            if somma > 0 and slot > 0:
+                target = {t: w * slot / somma for t, w in base.items()}
+            elif slot > 0:
+                target = mc.pesi_target(nuovo, cfg.n, esp)
+            else:
+                target = {}
 
-        rend_netto = esp * rend_loro - costo
-        equity *= (1 + rend_netto)
+        pesi_prima = pesi
+        equity, pesi, costo, lordo, netto, gaps = _applica_periodo(
+            equity, pesi_prima, target, entry, exit_, cfg.costo_lato)
+        gaps_tot += [{"data": data_rib.strftime("%Y-%m-%d"), "titoli": gaps}] if gaps else []
         picco = max(picco, equity)
-        rend_storico.append(rend_netto)
+        rend_storico.append(netto)
         serie.append((mese_next, equity))
         dettagli.append({"data": mese_next.strftime("%Y-%m-%d"), "n": len(nuovo),
-                         "turnover": round(turnover * 100, 1), "esposizione": round(esp * 100, 1),
-                         "rend": round(rend_netto * 100, 2)})
+                         "turnover": round(mc.turnover_operativo(pesi_prima, target) * 100, 1),
+                         "costo": round(costo * 100, 4),
+                         "esposizione": round(sum(target.values()) * 100, 1),
+                         "rend": round(netto * 100, 2)})
         corrente = list(nuovo)
 
     eq = pd.Series({d: v for d, v in serie}).sort_index()
@@ -238,11 +269,49 @@ def simula_risk(pannelli: dict, mesi: list[pd.Timestamp], cfg, nome: str,
     info = {
         "turnover": float(np.mean([d["turnover"] for d in dettagli])) / 100 if dettagli else None,
         "esposizione_media": float(np.mean([d["esposizione"] for d in dettagli])) if dettagli else None,
-        "mesi_in_cash": float(np.mean([1 if d["esposizione"] < 1 else 0 for d in dettagli]) * 100)
+        "mesi_in_cash": float(np.mean([1 if d["esposizione"] < 100 else 0 for d in dettagli]) * 100)
                          if dettagli else None,
         "dettagli": dettagli,
         "mesi": len(rom),
+        "gaps_dati": gaps_tot,
+        "validabile": not gaps_tot,
     }
+    return eq, info
+
+
+def simula_paniere(pannelli: dict, mesi: list[pd.Timestamp], cfg,
+                   filtro_mm200: bool = False) -> tuple[pd.Series, dict]:
+    """Paniere equipesato comparabile: stessa liquidità, date, ingressi e costi.
+
+    Non è il buy & hold dell'intero universo storico: ribilancia ogni mese sui
+    soli titoli liquidi disponibili in quella data, pagando le transizioni.
+    """
+    equity = cfg.capitale
+    start = 13
+    serie = [(mesi[start], equity)] if len(mesi) > start else []
+    dettagli, gaps_tot = [], []
+    pesi: dict[str, float] = {}
+    for i in range(start, len(mesi) - 1):
+        data_rib, mese_next = mesi[i], mesi[i + 1]
+        elig = _elegibili(pannelli, data_rib, cfg.liquidita)
+        if filtro_mm200 and not elig.empty:
+            elig = elig[elig["sopra_mm200"].astype(bool)]
+        entry, exit_, _ = _prezzi_esecuzione(pannelli, data_rib, mese_next)
+        target = {t: 1.0 / len(elig) for t in elig.index} if len(elig) else {}
+        pesi_prima = pesi
+        equity, pesi, costo, lordo, netto, gaps = _applica_periodo(
+            equity, pesi_prima, target, entry, exit_, cfg.costo_lato)
+        gaps_tot += [{"data": data_rib.strftime("%Y-%m-%d"), "titoli": gaps}] if gaps else []
+        serie.append((mese_next, equity))
+        dettagli.append({"data": mese_next.strftime("%Y-%m-%d"), "n": len(elig),
+                         "turnover": round(mc.turnover_operativo(pesi_prima, target) * 100, 1),
+                         "costo": round(costo * 100, 4),
+                         "esposizione": round(sum(target.values()) * 100, 1),
+                         "rend": round(netto * 100, 2)})
+    eq = pd.Series({d: v for d, v in serie}).sort_index()
+    info = {"dettagli": dettagli, "gaps_dati": gaps_tot, "validabile": not gaps_tot,
+            "turnover": float(np.mean([d["turnover"] for d in dettagli])) / 100 if dettagli else None,
+            "esposizione_media": 100.0, "mesi_in_cash": 0.0, "mesi": max(len(eq) - 1, 0)}
     return eq, info
 
 
@@ -327,7 +396,7 @@ def main():
 
     pannelli, closes, mib = carica_pannelli(args.dal, args.aggiorna_dati)
     mesi = sorted(closes.index)
-    print(f"Titoli: {len(pannelli)} | Periodo: {mesi[0].date()} → {mesi[-1].date()} "
+    print(f"Mercato: {tu.mercato} | Titoli: {len(pannelli)} | Periodo: {mesi[0].date()} → {mesi[-1].date()} "
           f"({len(mesi)} mesi) | soglia liquidità: {args.liquidita:,.0f} €/giorno")
 
     # ---------------- varianti ----------------
@@ -355,10 +424,11 @@ def main():
         if len(eq) < 24:
             print(f"  {nome}: dati insufficienti")
             continue
-        st = mm.statistiche(eq, len(eq), info["turnover"], None)
+        st = mm.statistiche(eq, turnover_medio=info["turnover"])
         st["variante"] = nome
-        st["esposizione_media_%"] = round(info["esposizione_media"], 1) if info["esposizione_media"] else None
-        st["mesi_risk_off_%"] = round(info["mesi_in_cash"], 1) if info["mesi_in_cash"] else None
+        st["esposizione_media_%"] = round(info["esposizione_media"], 1) if info["esposizione_media"] is not None else None
+        st["mesi_risk_off_%"] = round(info["mesi_in_cash"], 1) if info["mesi_in_cash"] is not None else None
+        st["validabile"] = bool(info.get("validabile", False))
         cr = analisi_crash(eq)
         st["max_dd_%"] = cr.get("max_dd_%")
         st["recupero_mesi"] = cr.get("recupero_mesi")
@@ -366,24 +436,30 @@ def main():
         risultati.append(st)
         curve[nome] = eq
         crash[nome] = cr
-        dettagli_var[nome] = info.get("dettagli", [])
+        dettagli_var[nome] = info
         print(f"  {nome:<44} CAGR {st['CAGR_%']:+6.2f}%  vol {st['volatilità_%']:5.1f}%  "
               f"Sharpe {st['Sharpe']:+5.2f}  maxDD {st['max_dd_%']:6.1f}%  "
               f"turnover {st.get('turnover_mensile_%', 0):5.1f}%  espos. {st['esposizione_media_%'] or 0:5.1f}%")
 
     # ---------------- controllo: portafogli casuali ---------------- #
-    cfg_rand = nuova_cfg(casuale=True)
-    rand_cagr, rand_curve = [], []
+    # Stesso universo trend, stesso buffer e stessi costi della variante di
+    # riferimento: cambia solo l'ordinamento (casuale invece di momentum).
+    cfg_rand = nuova_cfg(buffer=mc.BUFFER_RANK, casuale=True)
+    rand_cagr, rand_returns = [], []
     for s in range(20):
         eq_r, info_r = simula_risk(pannelli, mesi, cfg_rand, f"random-{s}", seed=s)
         if len(eq_r) < 24:
             continue
-        st_r = mm.statistiche(eq_r, len(eq_r), info_r["turnover"], None)
+        st_r = mm.statistiche(eq_r, turnover_medio=info_r["turnover"])
         rand_cagr.append(st_r["CAGR_%"])
-        rand_curve.append(eq_r)
-    if rand_curve:
-        eq_rm = pd.concat(rand_curve, axis=1).mean(axis=1)
-        st = mm.statistiche(eq_rm, len(eq_rm))
+        rand_returns.append(eq_r.pct_change())
+    if rand_returns:
+        # Media dei rendimenti mensili, non media delle equity curve: la seconda
+        # sarebbe un portafoglio di portafogli con ribilanciamento implicito.
+        r_rm = pd.concat(rand_returns, axis=1).mean(axis=1).fillna(0)
+        eq_rm = (1 + r_rm).cumprod() * args.capitale
+        eq_rm.iloc[0] = args.capitale
+        st = mm.statistiche(eq_rm)
         st["variante"] = f"⓪ Controllo: casuali equip. (media {len(rand_cagr)} seed)"
         risultati.append(st)
         curve[st["variante"]] = eq_rm
@@ -391,17 +467,42 @@ def main():
         print(f"  {st['variante']:<44} CAGR {st['CAGR_%']:+6.2f}%  "
               f"(5°-95° dei seed: {np.percentile(rand_cagr,5):+.2f}% … {np.percentile(rand_cagr,95):+.2f}%)")
 
-    # benchmark
+    # ---------------- benchmark comparabile scelto dall'utente ----------------
+    cfg_bench = nuova_cfg()
+    eq_pan, info_pan = simula_paniere(pannelli, mesi, cfg_bench, filtro_mm200=False)
+    eq_pan_trend, info_pan_trend = simula_paniere(pannelli, mesi, cfg_bench, filtro_mm200=True)
+    for nome_b, eq_b, info_b in (
+            (mc.BENCH_PANIERE, eq_pan, info_pan),
+            (mc.BENCH_PANIERE_TREND, eq_pan_trend, info_pan_trend)):
+        if len(eq_b) < 24:
+            continue
+        st = mm.statistiche(eq_b, turnover_medio=info_b["turnover"])
+        st["variante"] = nome_b
+        st["esposizione_media_%"] = 100.0
+        st["mesi_risk_off_%"] = 0.0
+        risultati.append(st)
+        curve[nome_b] = eq_b
+        crash[nome_b] = analisi_crash(eq_b)
+        dettagli_var[nome_b] = info_b
+
+    # Diagnostica non comparabile: vecchio buy & hold dell'intero universo e
+    # indice di prezzo. Hanno date/universo/costi diversi dalla strategia.
     eq_univ = (closes.pct_change().mean(axis=1).fillna(0) + 1).cumprod() * args.capitale
-    st = mm.statistiche(eq_univ, len(eq_univ))
-    st["variante"] = "◇ Universo equipesato (buy & hold)"
+    if len(eq_pan):
+        eq_univ = eq_univ.reindex(eq_pan.index).ffill()
+        eq_univ = eq_univ / eq_univ.iloc[0] * args.capitale
+    st = mm.statistiche(eq_univ)
+    st["variante"] = mc.BENCH_UNIVERSO_STORICO
     risultati.append(st)
     curve[st["variante"]] = eq_univ
     crash[st["variante"]] = analisi_crash(eq_univ)
     if mib is not None and len(mib) > 12:
         eq_mib = mib / mib.iloc[0] * args.capitale
-        st = mm.statistiche(eq_mib, len(eq_mib))
-        st["variante"] = "◇ FTSE MIB (buy & hold)"
+        if len(eq_pan):
+            eq_mib = eq_mib.reindex(eq_pan.index).ffill()
+            eq_mib = eq_mib / eq_mib.iloc[0] * args.capitale
+        st = mm.statistiche(eq_mib)
+        st["variante"] = mc.bench_indice(tu.mercato)
         risultati.append(st)
         curve[st["variante"]] = eq_mib
         crash[st["variante"]] = analisi_crash(eq_mib)
@@ -418,17 +519,19 @@ def main():
     print("=" * 132)
     print(tab.sort_values("Sharpe", ascending=False)[colonne].to_string(index=False))
 
-    # ---------------- in-sample / out-of-sample ----------------
+    # ---------------- split storico esplorativo ----------------
+    # Non è un out-of-sample intatto: le varianti sono state scelte dopo aver
+    # osservato entrambi i periodi. Serve a misurare la stabilità, non a validare.
     print("\n" + "=" * 132)
-    print("IN-SAMPLE (2010-2017) vs OUT-OF-SAMPLE (2018-2026)")
+    print("SPLIT STORICO ESPLORATIVO: 2010-2017 vs 2018-2026 (non è un holdout intatto)")
     print("=" * 132)
     righe = []
     for nome, eq in curve.items():
         for epoca, da, a in (("2010-2017", 2010, 2017), ("2018-2026", 2018, 2100)):
-            sub = eq[(eq.index.year >= da) & (eq.index.year <= a)]
+            sub = mm.sotto_periodo(eq, da, a)
             if len(sub) < 24:
                 continue
-            s = mm.statistiche(sub, len(sub))
+            s = mm.statistiche(sub)
             s["variante"] = nome
             s["periodo"] = epoca
             righe.append(s)
@@ -457,7 +560,7 @@ def main():
                   "recupero_mesi", "Calmar"]].to_string(index=False))
 
     # ---------------- per anno ----------------
-    chiavi = [k for k in curve if k.startswith(("①", "③", "⑤", "⑦", "◇"))]
+    chiavi = [k for k in curve if k.startswith(("①", "②", "③", "⑤", "⑦", "◇"))]
     tab_anno = pd.DataFrame({k: per_anno(curve[k], args.capitale) for k in chiavi})
     print("\n" + "=" * 132)
     print("RENDIMENTO PER ANNO (%)")
@@ -482,9 +585,26 @@ def main():
     path = scrivi_report_risk(tab, colonne, tab_anno, tab_cr, pivo_c, pivo_s, pivo_d,
                              curve, args, rand_cagr, OUT_DIR)
     print(f"\nReport: {path}")
+    gaps_per_variante = {k: v.get("gaps_dati", []) for k, v in dettagli_var.items()}
+    audit = {
+        "mercato": tu.mercato,
+        "generato_il": pd.Timestamp.now(tz="Europe/Rome").isoformat(),
+        "periodo": {"da": str(mesi[0].date()), "a": str(mesi[-1].date()), "mesi": len(mesi)},
+        "universo": {"titoli": len(pannelli), "liquidita_eur_giorno": args.liquidita,
+                     "sopravvivenza": "solo titoli presenti nella lista attuale: bias non rimosso"},
+        "esecuzione": {"segnale": "chiusura ultima sessione del mese",
+                       "ingresso": "prima chiusura della sessione successiva",
+                       "costo_lato": args.costo, "capitale": args.capitale},
+        "benchmark_principale": mc.BENCH_PANIERE,
+        "validato": False,
+        "nota_validazione": "Nessun holdout intatto; non usare questi numeri come prova di edge.",
+        "gaps_dati": gaps_per_variante,
+        "varianti": risultati,
+        "crash": {k: v for k, v in crash.items()},
+        "random_cagr": rand_cagr,
+    }
     with open(os.path.join(OUT_DIR, tu.percorso("momentum_risk_riepilogo.json")), "w", encoding="utf-8") as f:
-        json.dump({"varianti": risultati, "crash": {k: v for k, v in crash.items()},
-                   "random_cagr": rand_cagr}, f, ensure_ascii=False, indent=2, default=str)
+        json.dump(audit, f, ensure_ascii=False, indent=2, default=str)
     return 0
 
 

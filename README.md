@@ -1,5 +1,11 @@
 # Scanner MM200 — Borsa Italiana (Piazza Affari)
 
+> 🔧 **Revisione 2026-10-30 — prima di usare i numeri storici.**
+> Il progetto è in revisione per confrontare la strategia con un **paniere liquido equipesato**
+> a parità di date, liquidità, ingressi e costi. Le vecchie tabelle con “edge validato” non sono
+> più una prova operativa: survivorship bias non rimosso, nessun holdout intatto, costi/tasse
+> semplificati. Vedi [`REVISIONE_STRATEGIA.md`](REVISIONE_STRATEGIA.md) e i test in `tests/`.
+
 Scanner in Python che cerca, tra i titoli di **Borsa Italiana** (FTSE MIB, FTSE Italia Mid Cap, FTSE Italia STAR),
 quelli **pronti a rompere la media mobile a 200 periodi** (o appena rotti), con un punteggio di "attenzione" e i
 segnali costruiti — e continuamente verificati — su una ricerca empirica interna.
@@ -394,7 +400,7 @@ sull'equity: il modo giusto di gestire il rischio del momentum è la **diversifi
 | Famiglia di segnale | Esito |
 |---|---|
 | Rottura della MM200 (con qualunque filtro: volume, regime, volatility, struttura) | **nessun edge** in portafoglio (pari al caso) |
-| **Momentum cross-sectional (12-1, top 10, mensile)** | **edge presente e stabile** IS/OOS, batte caso e beta |
+| **Momentum cross-sectional (12-1, top 10, mensile)** | **in revisione**: confronto principale col paniere liquido equipesato; nessun holdout intatto |
 
 Il motivo è concettuale: la rottura della media è un **segnale di timing** sullo stesso titolo (molto
 rumore, poco contenuto informativo); il momentum è un **segnale di selezione** che ordina *tutti* i titoli
@@ -410,14 +416,14 @@ pattern grafico.
 - [x] Controlli: baseline di stato, finestre non sovrapposte, split decenni, leave-one-out
 - [x] Verifica out-of-sample + validazione esterna su 56 titoli europei
 - [x] Portafoglio (stop, sizing, costi, walk-forward) → **la rottura della MM200 non è una strategia**
-- [x] Momentum cross-sectional → **edge presente e stabile** (batte caso e beta; capacità limitata)
+- [x] Momentum cross-sectional → **revisione 2026-10**: segnale/costi/benchmark corretti; edge non certificato
 - [x] **Risk management sul momentum**: buffer di rank (vince), volatility targeting (neutro),
       overlay di drawdown/trend (distruttivi: whipsaw) → **raccomandazione finale definita**
 - [x] Documentazione: metodo, numeri, fonti e limiti per ogni modulo
 
-**Esito complessivo in due frasi**: la rottura della media mobile a 200 periodi non ha edge in portafoglio
+**Esito storico, da rileggere dopo la revisione 2026-10**: la rottura della media mobile a 200 periodi non ha edge in portafoglio
 (nessun filtro la salva: volume inutile, filtri = market timing, excess di evento ≠ alpha). Il momentum
-cross-sectional ha un edge reale e stabile, ma la sua gestione del rischio efficace è il **buffer di
+cross-sectional era il candidato più interessante, ma la sua gestione del rischio efficace è il **buffer di
 ribilanciamento** e la diversificazione — non gli stop o gli overlay, che distruggono valore.
 
 **Possibili estensioni**

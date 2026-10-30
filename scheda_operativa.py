@@ -341,12 +341,13 @@ def main() -> int:
     ap.add_argument("--out", default=os.path.join(OUT_DIR, "scheda_operativa.html"))
     args = ap.parse_args()
 
-    oggi = pd.Timestamp(datetime.now().date())
+    import momentum_core as mc
+    oggi = mc.ultima_sessione_utile(pd.Timestamp.now(tz="Europe/Rome"), tu.mercato)
 
     if not os.path.exists(CACHE_LIVE):
         raise SystemExit("Manca cache/scanner_live.pkl: lancia prima `python3 selezione_oggi.py`.")
     raw_live = pd.read_pickle(CACHE_LIVE)
-    tab = so.costruisci_tabella(raw_live, oggi)
+    tab = so.costruisci_tabella(raw_live, oggi, tu.mercato)
     if tab.empty:
         raise SystemExit("Nessun titolo con dati sufficienti nella cache live.")
 
@@ -366,10 +367,12 @@ def main() -> int:
                              for t in sel.index]
     sel["azione"] = ["MANTIENI" if t in precedente else "COMPRA" for t in sel.index]
     sel = sel.reset_index()                       # il ticker diventa colonna
-    sel["peso_%"] = 100 / len(sel)
-    sel["eur_effettivi"] = args.capitale / len(sel)
-    sel["quote"] = np.floor(sel["eur_effettivi"] / sel["prezzo"]).astype(int)
-    sel["eur_effettivi"] = (sel["quote"] * sel["prezzo"]).round(2)
+    peso_slot = 100.0 / args.n if args.n > 0 else 0.0
+    eur_slot = args.capitale / args.n if args.n > 0 else 0.0
+    sel["peso_%"] = peso_slot
+    sel["eur_effettivi"] = eur_slot
+    sel["quote"] = np.floor(sel["eur_effettivi"] / sel["prezzo"]).astype(int) if len(sel) else pd.Series(dtype=int)
+    sel["eur_effettivi"] = (sel["quote"] * sel["prezzo"]).round(2) if len(sel) else pd.Series(dtype=float)
 
     # candidati in attesa: liquidi, momentum alto, ma SOTTO la MM200
     liq = tab[tab["turnover_mediano"] >= args.liquidita]

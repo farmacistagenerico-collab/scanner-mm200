@@ -87,14 +87,17 @@ STATO_FILE = os.path.join(BASE_DIR, "output", "stato_live.json")
 PAGINE_MERCATO = {"IT": "index.html", "DE": "de.html", "FR": "fr.html"}
 
 AFFIDABILITA = {
-    # numeri dal backtest 2010-2026 (momentum_risk.py --mercato XX)
-    "IT": ("ok", "Selezione 12-1 + MM200 + buffer 5: +18,7% annuo contro +12,8% "
-                 "dell'insieme dei titoli liquidi e +6,3% dei titoli estratti a caso. Metodo validato."),
-    "DE": ("ok", "Selezione 12-1 + MM200: +17,0% annuo contro +13,4% dell'insieme dei titoli liquidi "
-                 "e +6,2% dei titoli estratti a caso (primo periodo +17,1%, secondo +16,6%: stabile). Metodo validato."),
-    "FR": ("attenzione", "In Francia la selezione NON ha battuto l'insieme dei titoli liquidi: "
-                         "+10,8% contro +11,1% annuo dal 2010, e nel secondo periodo +6,0% contro +6,2%. "
-                         "Usa questa pagina come monitor, non come strategia operativa."),
+    # Nessun numero hardcoded: i risultati storici sono esplorativi e vanno
+    # riletti dai file del mercato attivo dopo ogni ricalcolo.
+    "IT": ("attenzione", "Revisione in corso: il confronto principale è il paniere liquido equipesato "
+                         "con stesse date, liquidità, ingressi e costi. I numeri storici non sono una "
+                         "prova di edge: survivorship bias non rimosso e nessun holdout intatto."),
+    "DE": ("attenzione", "Revisione in corso: usa il paniere liquido equipesato con stesse date/costi. "
+                         "I numeri storici non sono una prova di edge: survivorship bias non rimosso "
+                         "e nessun holdout intatto."),
+    "FR": ("attenzione", "Monitor: il confronto principale è il paniere liquido equipesato con stesse "
+                         "date/costi. I numeri storici non sono una prova di edge: survivorship bias "
+                         "non rimosso e nessun holdout intatto."),
 }
 
 
@@ -538,8 +541,8 @@ def _grafico_da_classifica(ticker: str) -> str:
 
 def _equity_html() -> str:
     """Scheda con la curva della strategia (base 100) e le statistiche chiave."""
-    perc_eq = os.path.join(OUT_DIR, "momentum_risk_equity.csv")
-    perc_var = os.path.join(OUT_DIR, "momentum_risk_varianti.csv")
+    perc_eq = os.path.join(OUT_DIR, tu.percorso("momentum_risk_equity.csv"))
+    perc_var = os.path.join(OUT_DIR, tu.percorso("momentum_risk_varianti.csv"))
     if not os.path.exists(perc_eq):
         return ""
     try:
@@ -548,7 +551,8 @@ def _equity_html() -> str:
         serie = {
             "② buffer 5 (consigliata)": ("② + buffer di rank 5", "#0a7d3c"),
             "① base mensile": ("① Base MOM 12-1 top10 + MM200 (mensile)", "#b45309"),
-            "Universo equipesato": ("◇ Universo equipesato (buy & hold)", "#1d4ed8"),
+            "Paniere liquido equipesato": ("◇ Paniere liquido equipesato (stessi costi/date)", "#1d4ed8"),
+            "Paniere liquido + MM200": ("◇ Paniere liquido + MM200 (stessi costi/date)", "#0ea5e9"),
             "Casuali": ("⓪ Controllo: casuali equip. (media 20 seed)", "#94a3b8"),
         }
         svg = gr.grafico_equity(d, serie, "La strategia nel tempo — base 100 (2010-2026, costi inclusi)")
@@ -565,9 +569,10 @@ def _equity_html() -> str:
             v = v.set_index("variante")
             for chiave, etichetta, colore in (
                     ("② + buffer di rank 5", "② buffer 5", "#0a7d3c"),
-                    ("◇ Universo equipesato (buy & hold)", "universo", "#1d4ed8"),
+                    ("◇ Paniere liquido equipesato (stessi costi/date)", "paniere liquido", "#1d4ed8"),
+                    ("◇ Paniere liquido + MM200 (stessi costi/date)", "paniere + MM200", "#0ea5e9"),
                     ("⓪ Controllo: casuali equip. (media 20 seed)", "casuali", "#64748b"),
-                    ("◇ FTSE MIB (buy & hold)", "FTSE MIB", "#7c3aed")):
+                    (f"◇ {tu.BENCHMARK_NOME} (indice, non comparabile)", tu.BENCHMARK_NOME, "#7c3aed")):
                 if chiave not in v.index:
                     continue
                 r = v.loc[chiave]
@@ -581,13 +586,13 @@ def _equity_html() -> str:
     return f"""
   <div class="box" style="margin-top:14px">
     <div style="font-size:13px;letter-spacing:1px;color:#64748b;text-transform:uppercase;font-weight:700">
-      La strategia nel tempo — perché fidarsi (e di cosa)</div>
+      La strategia nel tempo — confronto esplorativo</div>
     {svg}
     <div style="margin-top:10px">{''.join(chips)}</div>
     <div style="color:#64748b;font-size:12.5px;margin-top:6px">
-      Curva dell'equity con i costi inclusi (0,2% per lato). Il punto non è la salita, ma il confronto:
-      la strategia consigliata (verde) batte universo e portafogli casuali; gli overlay di rischio
-      (in <code>README §7.5</code>) stavano sotto il caso e non sono mostrati qui.
+      Curva dell'equity con costi forfettari (0,2% per lato). Il confronto principale è il paniere
+      liquido equipesato con stesse date/costi; indice e vecchio buy & hold sono solo diagnostiche.
+      Survivorship bias non rimosso, tasse non modellate, nessun holdout intatto: non è una prova di edge.
     </div>
   </div>"""
 
@@ -743,6 +748,27 @@ def stato_json() -> dict:
         }
 
 
+def _righe_classifica_html(classifica: list[dict], n, col) -> str:
+    """Righe della classifica statica (compatibile anche con Python < 3.12)."""
+    if not classifica:
+        return '<tr><td colspan="5">classifica non disponibile</td></tr>'
+    righe = []
+    for r in classifica:
+        p = r.get('punteggio')
+        punteggio = (f"<b style='color:{col(p)}'>{n(p, 0)}</b>"
+                     if p is not None and np.isfinite(p) else "<span style='color:#94a3b8'>— n/d</span>")
+        righe.append(
+            "<tr>"
+            f"<td style='padding:6px 8px;border-bottom:1px solid #eef2f7'>{r['nome']} "
+            f"<span style='color:#64748b;font-size:11.5px'>{r['ticker'].replace('.MI','')}</span></td>"
+            f"<td style='padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:right'>{n(r['prezzo'])} €</td>"
+            f"<td style='padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:right'>{n(r['mom_%'], 0)}%</td>"
+            f"<td style='padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:center'>{punteggio}</td>"
+            f"<td style='padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:center'>{r['affidabilita']}</td>"
+            "</tr>")
+    return "".join(righe)
+
+
 def scrivi_snapshot():
     """Scrive output/dashboard_statico.html: la stessa pagina, senza server."""
     with LOCK:
@@ -854,16 +880,7 @@ def scrivi_snapshot():
         <th style="text-align:right;padding:6px 8px">Mom 12-1</th>
         <th style="text-align:center;padding:6px 8px">Punteggio</th>
         <th style="text-align:center;padding:6px 8px">Affidabilità</th></tr></thead>
-      <tbody>{''.join(f"""<tr>
-        <td style="padding:6px 8px;border-bottom:1px solid #eef2f7">{r['nome']}
-          <span style="color:#64748b;font-size:11.5px">{r['ticker'].replace('.MI','')}</span></td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:right">{n(r['prezzo'])} €</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:right">{n(r['mom_%'], 0)}%</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:center">
-          {"<b style='color:" + col(r['punteggio']) + "'>" + n(r['punteggio'], 0) + "</b>"
-            if r['punteggio'] == r['punteggio'] else "<span style='color:#94a3b8'>— n/d</span>"}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:center">{r['affidabilita']}</td>
-      </tr>""" for r in classifica) if classifica else '<tr><td colspan="5">classifica non disponibile</td></tr>'}</tbody>
+      <tbody>{_righe_classifica_html(classifica, n, col)}</tbody></tbody>
     </table>
     <div style="color:#64748b;font-size:12px;margin-top:8px">
       Nella dashboard servita dal server questa tabella è completa e ogni riga ha il grafico su richiesta.</div>
@@ -873,7 +890,7 @@ def scrivi_snapshot():
     <b>Contesto</b> (informativo): FTSE MIB {mib} la MM200 · breadth {contesto.get('breadth_%', '—')}% dei
     {contesto.get('titoli', '—')} titoli · rotture MM200 nelle ultime 5 sedute:
     {', '.join(contesto.get('rotture_5sedute') or []) or 'nessuna'}. Modello stimato su {casi} posizioni storiche
-    (2010-2026), validato walk-forward.
+    (2010-2026). Frequenza storica, non previsione.
   </div>
   {_equity_html()}
   <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;margin-top:14px;
@@ -883,7 +900,7 @@ def scrivi_snapshot():
   </div>
 </div>
 <script>
-const BASI = ["", "http://localhost:8000", "http://127.0.0.1:8000"];
+const BASI = [""];
 async function prova(metodo, base, percorso) {{
   const r = await fetch(base + percorso, {{method: metodo}});
   if (!r.ok) throw new Error(r.status);
@@ -908,7 +925,7 @@ async function aggiorna() {{
   }}
   msg.style.color = "#b45309";
   msg.innerHTML = "Server non raggiungibile: questa è la copia statica. Avvia <code>python3 dashboard.py</code> "
-    + "e apri <code>http://localhost:8000</code> per usare il tasto.";
+    + "e apri la pagina servita dal server per usare il tasto.";
   b.disabled = false; b.textContent = "⟳ AGGIORNA ORA"; b.style.background = "#0a7d3c";
 }}
 (async () => {{
@@ -1095,7 +1112,7 @@ function render(s) {
     `<b>Contesto</b> (informativo): FTSE MIB ${ct.mib_sopra_mm200 ? "sopra" : "sotto"} la MM200 ·
      breadth ${ct.breadth_% ?? "—"}% dei ${ct.titoli ?? "—"} titoli · rotture MM200 nelle ultime 5 sedute:
      ${(ct.rotture_5sedute||[]).join(", ") || "nessuna"}.
-     Modello stimato su ${s.casi_storici} posizioni storiche (2010-2026), validato walk-forward.`;
+     Modello stimato su ${s.casi_storici} posizioni storiche (2010-2026). Frequenza storica, non previsione.`;
   document.getElementById("msg").textContent = s.errore ? "⚠ " + s.errore : (s.messaggio || "");
   if (s.equity) document.getElementById("equity").innerHTML = s.equity;
   if ((s.righe || []).length === 0) {
