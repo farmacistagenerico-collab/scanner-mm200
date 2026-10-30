@@ -1,0 +1,52 @@
+name: Backtest IT
+
+on:
+  pull_request:
+    paths:
+      - "momentum*.py"
+      - "selezione_oggi.py"
+      - "titoli_italiani.py"
+      - "requirements.txt"
+      - "tests/**"
+      - ".github/workflows/backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+      - name: Test di regressione
+        run: python -m unittest discover -s tests -v
+      - name: Bootstrap dati Italia
+        run: python bootstrap_dati.py --mercato IT --forza
+      - name: Backtest Italia 2010-oggi
+        run: python momentum_risk.py --mercato IT --dal 2010-01-01
+      - name: Selezione operativa Italia
+        run: python selezione_oggi.py --mercato IT --no-download
+      - name: Carica risultati
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-it
+          path: |
+            output/momentum_risk_riepilogo.json
+            output/momentum_risk_varianti.csv
+            output/momentum_risk_equity.csv
+            output/momentum_risk_per_anno.csv
+            output/momentum_risk_is_oos.csv
+            output/momentum_risk_crash.csv
+            output/report_momentum_risk.html
+            output/selezione_oggi.md
+            output/portafoglio_attuale.csv
+          if-no-files-found: warn
